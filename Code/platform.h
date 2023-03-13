@@ -63,15 +63,6 @@ struct String
     u32   len;
 };
 
-struct OpenGLInfo
-{
-    std::string glVersion;
-    std::string glRenderer;
-    std::string glVendor;
-    std::string glShadingLanguage;
-    std::vector<std::string> glExtensions;
-};
-
 String MakeString(const char *cstr);
 
 String MakePath(String dir, String filename);

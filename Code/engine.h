@@ -42,6 +42,35 @@ enum Mode
     Mode_Count
 };
 
+struct OpenGLInfo
+{
+    std::string glVersion;
+    std::string glRenderer;
+    std::string glVendor;
+    std::string glShadingLanguage;
+    std::vector<std::string> glExtensions;
+};
+
+struct Vertex3V2V
+{
+    glm::vec3 pos;
+    glm::vec2 uv;
+};
+
+const Vertex3V2V vertices[] = 
+{
+    {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0.0, 0.0)},
+    {glm::vec3(0.5, -0.5, 0.0), glm::vec2(1.0, 0.0)},
+    {glm::vec3(0.5, 0.5, 0.0), glm::vec2(1.0, 1.0)},
+    {glm::vec3(-0.5, 0.5, 0.0), glm::vec2(0.0, 1.0)},
+};
+
+const u16 indices[] =
+{
+    0,1,2,
+    0,2,3
+};
+
 struct App
 {
     // Loop
