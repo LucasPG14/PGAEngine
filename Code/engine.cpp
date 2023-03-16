@@ -257,7 +257,7 @@ void Gui(App* app)
 
         ImGui::EndPopup();
     }
-    ImGui::OpenPopup("OpenGL shit");
+    //ImGui::OpenPopup("OpenGL shit");
 
     ImGui::End();
 }
@@ -282,6 +282,25 @@ void Render(App* app)
                 //   (...and make its texture sample from unit 0)
                 // - bind the vao
                 // - glDrawElements() !!!
+                glClearColor(0.1, 0.1, 0.1, 1.0);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+                Program& program = app->programs[app->texturedGeometryProgramIdx];
+                glUseProgram(program.handle);
+
+                glBindVertexArray(app->vao);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+                glUniform1i(app->programUniformTexture, 0);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, app->textures[app->diceTexIdx].handle);
+
+                glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
+
+                glBindVertexArray(0);
+                glUseProgram(0);
             }
             break;
 
