@@ -5,6 +5,7 @@
 #pragma once
 
 #include "platform.h"
+#include "Camera.h"
 #include <glad/glad.h>
 
 typedef glm::vec2  vec2;
@@ -114,6 +115,8 @@ struct App
     GLuint vao;
 
     OpenGLInfo glInfo;
+
+    Camera camera;
 };
 
 void Init(App* app);

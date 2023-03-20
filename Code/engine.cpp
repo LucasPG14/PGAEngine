@@ -224,6 +224,8 @@ void Init(App* app)
     app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
     app->mode = Mode_TexturedQuad;
+
+    app->camera.Init({ 0.0f, 0.0f, 5.0f }, { 0.0, 0.0, 0.0 }, 0.1f, 1000.0f, app->displaySize.x / app->displaySize.y);
 }
 
 void Gui(App* app)
