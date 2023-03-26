@@ -5,15 +5,9 @@
 #pragma once
 
 #include "platform.h"
+#include "RenderStructs.h"
 #include "Camera.h"
 #include <glad/glad.h>
-
-typedef glm::vec2  vec2;
-typedef glm::vec3  vec3;
-typedef glm::vec4  vec4;
-typedef glm::ivec2 ivec2;
-typedef glm::ivec3 ivec3;
-typedef glm::ivec4 ivec4;
 
 struct Image
 {
@@ -34,6 +28,7 @@ struct Program
     GLuint             handle;
     std::string        filepath;
     std::string        programName;
+    VertexShaderLayout vertexInputLayout;
     u64                lastWriteTimestamp; // What is this for?
 };
 
@@ -87,8 +82,11 @@ struct App
 
     ivec2 displaySize;
 
-    std::vector<Texture>  textures;
-    std::vector<Program>  programs;
+    std::vector<Texture> textures;
+    std::vector<Material> materials;
+    std::vector<Mesh> meshes;
+    std::vector<Model> models;
+    std::vector<Program> programs;
 
     // program indices
     u32 texturedGeometryProgramIdx;
@@ -117,6 +115,8 @@ struct App
     OpenGLInfo glInfo;
 
     Camera camera;
+
+    u32 model;
 };
 
 void Init(App* app);
@@ -127,3 +127,4 @@ void Update(App* app);
 
 void Render(App* app);
 
+u32 LoadTexture2D(App* app, const char* filepath);
