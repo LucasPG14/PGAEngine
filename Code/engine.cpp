@@ -12,6 +12,22 @@
 
 #include "assimp_model_loading.h"
 
+namespace Utils
+{
+    u8 GetGLComponentCount(GLenum type)
+    {
+        switch (type)
+        {
+        case GL_FLOAT_VEC3:
+            return 3;
+        case GL_FLOAT_VEC2:
+            return 2;
+        default:
+            assert("Not implemented");
+        }
+    }
+}
+
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 {
     GLchar  infoLogBuffer[1024] = {};
@@ -223,14 +239,19 @@ void Init(App* app)
     
     for (int i = 0; i < attributeCount; ++i)
     {
-        std::string attributeName;
+        char attributeName[128] = {};
         
         GLsizei attributeNameLength = 0;
         GLsizei attributeSize = 0;
         GLenum attributeType = 0;
-        glGetActiveAttrib(program.handle, i, ARRAY_COUNT(attributeName.data()), &attributeNameLength, &attributeSize, &attributeType, &attributeName[0]);
+        glGetActiveAttrib(program.handle, i, ARRAY_COUNT(attributeName), &attributeNameLength, &attributeSize, &attributeType, attributeName);
         
-        glGetAttribLocation(program.handle, attributeName.data());
+        GLint location = glGetAttribLocation(program.handle, attributeName);
+
+        VertexShaderAttribute attribute = {};
+        attribute.location = location;
+        attribute.componentCount = Utils::GetGLComponentCount(attributeType);
+        program.vertexInputLayout.attributes.push_back(attribute);
     }
 
     app->programUniformTexture = glGetUniformLocation(program.handle, "uTexture");
@@ -241,7 +262,7 @@ void Init(App* app)
     app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
     app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
-    app->model = LoadModel(app, "Patrick/backpack.obj");
+    app->model = LoadModel(app, "backpack/backpack.obj");
 
     app->mode = Mode_TexturedQuad;
 
@@ -374,6 +395,7 @@ void Render(App* app)
                     u32 submeshMaterialIdx = model.materialIdx[i];
                     Material& submeshMaterial = app->materials[submeshMaterialIdx];
 
+                    glUniform1i(app->programUniformTexture, 0);
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
 
