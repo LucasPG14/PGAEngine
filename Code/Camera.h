@@ -2,6 +2,10 @@
 
 #include "glm/glm.hpp"
 
+struct Input;
+
+typedef float f32;
+
 class Camera
 {
 public:
@@ -9,7 +13,7 @@ public:
 	~Camera();
 
 	void Init(glm::vec3 pos, glm::vec3 t, float near, float far, float aspRatio);
-	void Update();
+	void Update(Input input, f32 dt);
 
 	const glm::mat4& GetViewMatrix() { return view; }
 	const glm::mat4& GetProjectionMatrix() { return projection; }

@@ -47,6 +47,18 @@ struct OpenGLInfo
     std::vector<std::string> glExtensions;
 };
 
+struct Entity
+{
+    vec3 position;
+    vec3 rotation;
+    vec3 scale;
+    glm::mat4 worldMatrix;
+    
+    u32 modelIndex;
+    u32 localParamsOffset;
+    u32 localParamsSize;
+};
+
 struct Vertex3V2V
 {
     glm::vec3 pos;
@@ -116,7 +128,12 @@ struct App
 
     Camera camera;
 
-    u32 model;
+    std::vector<Entity> entities;
+
+    u32 maxUniformBufferSize;
+    u32 uniformBlockAlignment;
+
+    u32 uniformBuffer;
 };
 
 void Init(App* app);

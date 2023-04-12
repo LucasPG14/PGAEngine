@@ -35,6 +35,7 @@ typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
 
+
 enum MouseButton {
     LEFT,
     RIGHT,
@@ -57,7 +58,8 @@ enum ButtonState {
     BUTTON_RELEASE
 };
 
-struct Input {
+struct Input 
+{
     glm::vec2   mousePos;
     glm::vec2   mouseDelta;
     ButtonState mouseButtons[MOUSE_BUTTON_COUNT];
