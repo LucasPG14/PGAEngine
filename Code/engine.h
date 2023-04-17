@@ -59,6 +59,29 @@ struct Entity
     u32 localParamsSize;
 };
 
+struct Buffer
+{
+    GLuint handle;
+    GLenum type;
+    u32 size;
+    u32 head;
+    void* data;
+};
+
+enum class LightType
+{
+    DIRECTIONAL = 0,
+    POINT = 1
+};
+
+struct Light
+{
+    unsigned int type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
+
 struct Vertex3V2V
 {
     glm::vec3 pos;
@@ -129,11 +152,16 @@ struct App
     Camera camera;
 
     std::vector<Entity> entities;
+    std::vector<Light> lights;
 
     u32 maxUniformBufferSize;
     u32 uniformBlockAlignment;
 
     u32 uniformBuffer;
+
+    Buffer cBuffer;
+    u32 globalParamsOffset;
+    u32 globalParamsSize;
 };
 
 void Init(App* app);

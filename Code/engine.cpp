@@ -11,6 +11,7 @@
 #include <stb_image_write.h>
 
 #include "assimp_model_loading.h"
+#include "buffermanagement.h"
 #include <glm/gtx/matrix_decompose.hpp>
 
 namespace Utils
@@ -288,6 +289,22 @@ void Init(App* app)
         entity.scale = vec3(1.0f);
     }
 
+    //app->globalParamsOffset = app->cBuffer.head;
+
+    //PushVec3(app->cBuffer, app->camera.GetPosition());
+
+    //PushUInt(app->cBuffer, app->lights.size());
+
+    //for (int i = 0; i < app->lights.size(); ++i)
+    //{
+    //    AlignHead(app->cBuffer, sizeof(vec4));
+
+    //    PushUInt(app->cBuffer, app->lights[i].type);
+    //    PushVec3(app->cBuffer, app->lights[i].color);
+    //    PushVec3(app->cBuffer, app->lights[i].direction);
+    //    PushVec3(app->cBuffer, app->lights[i].position);
+    //}
+
     app->mode = Mode_TexturedQuad;
 
     app->camera.Init({ 0.0f, 0.0f, 5.0f }, { 0.0, 0.0, 0.0 }, 0.1f, 1000.0f, app->displaySize.x / app->displaySize.y);
@@ -421,6 +438,8 @@ void Render(App* app)
                 glViewport(0, 0, app->displaySize.x, app->displaySize.y);
                 Program& program = app->programs[app->texturedGeometryProgramIdx];
                 glUseProgram(program.handle);
+
+
 
                 for (int i = 0; i < app->entities.size(); ++i)
                 {

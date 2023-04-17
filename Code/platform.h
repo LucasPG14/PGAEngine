@@ -14,6 +14,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <string>
+#include <glad/glad.h>
 
 #pragma warning(disable : 4267) // conversion from X to Y, possible loss of data
 
@@ -115,4 +116,3 @@ LogString(logBuffer);             \
 
 #define PI  3.14159265359f
 #define TAU 6.28318530718f
-

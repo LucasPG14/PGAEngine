@@ -19,6 +19,8 @@ public:
 	const glm::mat4& GetProjectionMatrix() { return projection; }
 	const glm::mat4 GetViewProjection() { return projection * view; }
 
+	const glm::vec3& GetPosition() { return position; }
+
 private:
 	glm::vec3 position;
 	glm::vec3 target;
