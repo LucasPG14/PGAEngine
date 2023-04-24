@@ -462,6 +462,8 @@ void Render(App* app)
                 {
                     Entity& entity = app->entities[i];
 
+                    glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
+
                     Model& model = app->models[entity.modelIndex];
                     Mesh& mesh = app->meshes[model.meshIdx];
 
