@@ -264,18 +264,14 @@ void Init(App* app)
     app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
     app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
-    GLint maxUniformBufferSize;
-    GLint maxUniformBlockAlignment;
-    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBufferSize);
-    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &maxUniformBlockAlignment);
+    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
 
     // Uniform buffer
-    glGenBuffers(1, &app->uniformBuffer);
-    glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBuffer);
-    glBufferData(GL_UNIFORM_BUFFER, maxUniformBufferSize, NULL, GL_STREAM_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    app->uniformBuffer = CreateBuffer(app->maxUniformBufferSize, GL_UNIFORM_BUFFER, GL_STATIC_DRAW);
+    app->globalParamsOffset = app->uniformBuffer.head;
 
-    glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->uniformBuffer, 0, 128);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->uniformBuffer.handle, 0, 128);
 
     for (int i = -1; i <= 1; ++i)
     {
@@ -289,6 +285,7 @@ void Init(App* app)
         entity.scale = vec3(1.0f);
     }
 
+    //app->cBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
     //app->globalParamsOffset = app->cBuffer.head;
 
     //PushVec3(app->cBuffer, app->camera.GetPosition());
@@ -305,9 +302,11 @@ void Init(App* app)
     //    PushVec3(app->cBuffer, app->lights[i].position);
     //}
 
+    glEnable(GL_DEPTH_TEST);
+
     app->mode = Mode_TexturedQuad;
 
-    app->camera.Init({ 0.0f, 0.0f, 5.0f }, { 0.0, 0.0, 0.0 }, 0.1f, 1000.0f, app->displaySize.x / app->displaySize.y);
+    app->camera.Init({0.0f, 0.0f, 5.0f}, 0.1f, 1000.0f, app->displaySize.x / app->displaySize.y);
 }
 
 void Gui(App* app)
@@ -365,6 +364,26 @@ void Update(App* app)
 {
     // You can handle app->input keyboard/mouse here
     app->camera.Update(app->input, app->deltaTime);
+
+    MapBuffer(app->uniformBuffer, GL_WRITE_ONLY);
+
+    app->globalParamsOffset = app->uniformBuffer.head;
+
+    // Entities
+
+    for (int i = 0; i < app->entities.size(); ++i)
+    {
+        AlignHead(app->uniformBuffer, app->uniformBlockAlignment);
+        Entity& entity = app->entities[i];
+        glm::mat4 worldViewProj = app->camera.GetViewProjection() * entity.worldMatrix;
+
+        entity.localParamsOffset = app->uniformBuffer.head;
+        PushMat4(app->uniformBuffer, entity.worldMatrix);
+        PushMat4(app->uniformBuffer, worldViewProj);
+        entity.localParamsSize = app->uniformBuffer.head - entity.localParamsOffset;
+    }
+    
+    UnmapBuffer(app->uniformBuffer);
 }
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
@@ -439,28 +458,12 @@ void Render(App* app)
                 Program& program = app->programs[app->texturedGeometryProgramIdx];
                 glUseProgram(program.handle);
 
-
-
                 for (int i = 0; i < app->entities.size(); ++i)
                 {
                     Entity& entity = app->entities[i];
-                    glm::mat4 worldViewProj = app->camera.GetViewProjection() * entity.worldMatrix;
 
                     Model& model = app->models[entity.modelIndex];
                     Mesh& mesh = app->meshes[model.meshIdx];
-
-                    glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBuffer);
-                    u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-                    u32 bufferHead = 0;
-
-                    memcpy(bufferData + bufferHead, glm::value_ptr(entity.worldMatrix), sizeof(glm::mat4));
-                    bufferHead += sizeof(glm::mat4);
-
-                    memcpy(bufferData + bufferHead, glm::value_ptr(worldViewProj), sizeof(glm::mat4));
-                    bufferHead += sizeof(glm::mat4);
-
-                    glUnmapBuffer(GL_UNIFORM_BUFFER);
-                    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
                     for (u32 i = 0; i < mesh.submeshes.size(); ++i)
                     {

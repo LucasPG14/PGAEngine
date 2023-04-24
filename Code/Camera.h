@@ -12,7 +12,7 @@ public:
 	Camera();
 	~Camera();
 
-	void Init(glm::vec3 pos, glm::vec3 t, float near, float far, float aspRatio);
+	void Init(glm::vec3 pos, float near, float far, float aspRatio);
 	void Update(Input input, f32 dt);
 
 	const glm::mat4& GetViewMatrix() { return view; }
@@ -23,7 +23,8 @@ public:
 
 private:
 	glm::vec3 position;
-	glm::vec3 target;
+	glm::vec3 front;
+	glm::vec3 up;
 
 	glm::mat4 view;
 	glm::mat4 projection;

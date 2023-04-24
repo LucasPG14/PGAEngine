@@ -154,11 +154,10 @@ struct App
     std::vector<Entity> entities;
     std::vector<Light> lights;
 
-    u32 maxUniformBufferSize;
-    u32 uniformBlockAlignment;
+    GLint maxUniformBufferSize;
+    GLint uniformBlockAlignment;
 
-    u32 uniformBuffer;
-
+    Buffer uniformBuffer;
     Buffer cBuffer;
     u32 globalParamsOffset;
     u32 globalParamsSize;
