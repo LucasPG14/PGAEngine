@@ -271,7 +271,8 @@ void Init(App* app)
     app->uniformBuffer = CreateBuffer(app->maxUniformBufferSize, GL_UNIFORM_BUFFER, GL_STATIC_DRAW);
     app->globalParamsOffset = app->uniformBuffer.head;
 
-    glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->uniformBuffer.handle, 0, 128);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, 0, 40);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->uniformBuffer.handle, 40, 128);
 
     for (int i = -1; i <= 1; ++i)
     {
@@ -285,8 +286,18 @@ void Init(App* app)
         entity.scale = vec3(1.0f);
     }
 
-    //app->cBuffer = CreateConstantBuffer(app->maxUniformBufferSize);
-    //app->globalParamsOffset = app->cBuffer.head;
+    for (int i = 0; i < 3; ++i)
+    {
+        Light& light = app->lights.emplace_back();
+        light.color = glm::vec3(1.0, 0.0, 0.0);
+        light.position = glm::vec3(0.0, 0.0, 0.0);
+        light.direction = glm::vec3(0.0, 0.0, 0.0);
+        light.type = LightType::DIRECTIONAL;
+    }
+
+    app->cBuffer = CreateBuffer(app->maxUniformBufferSize, GL_UNIFORM_BUFFER, GL_STATIC_DRAW);
+    /*glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, 0, 36);*/
+    //app->globalParamsOffset = app->uniformBuffer.head;
 
     //PushVec3(app->cBuffer, app->camera.GetPosition());
 
@@ -358,6 +369,24 @@ void Gui(App* app)
     }
 
     ImGui::End();
+
+    ImGui::Begin("Lights");
+
+    for (int i = 0; i < app->lights.size(); ++i)
+    {
+        ImGui::PushID(i);
+        if (ImGui::CollapsingHeader(("Light " + std::to_string(i)).c_str()))
+        {
+            Light& light = app->lights[i];
+            
+            ImGui::DragFloat3("Position", glm::value_ptr(light.position));
+            ImGui::DragFloat3("Direction", glm::value_ptr(light.direction));
+            ImGui::ColorPicker4("Color", glm::value_ptr(light.color));
+        }
+        ImGui::PopID();
+    }
+
+    ImGui::End();
 }
 
 void Update(App* app)
@@ -369,8 +398,24 @@ void Update(App* app)
 
     app->globalParamsOffset = app->uniformBuffer.head;
 
-    // Entities
+    PushVec3(app->uniformBuffer, app->camera.GetPosition());
+    PushUInt(app->uniformBuffer, app->lights.size());
 
+    // Global Params
+    for (int i = 0; i < app->lights.size(); ++i)
+    {
+        AlignHead(app->uniformBuffer, sizeof(vec4));
+        
+        Light& light = app->lights[i];
+        PushUInt(app->uniformBuffer, (u32)light.type);
+        PushVec3(app->uniformBuffer, light.color);
+        PushVec3(app->uniformBuffer, light.direction);
+        PushVec3(app->uniformBuffer, light.position);
+    }
+
+    app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
+    
+    // Local Params
     for (int i = 0; i < app->entities.size(); ++i)
     {
         AlignHead(app->uniformBuffer, app->uniformBlockAlignment);
@@ -458,10 +503,12 @@ void Render(App* app)
                 Program& program = app->programs[app->texturedGeometryProgramIdx];
                 glUseProgram(program.handle);
 
+
                 for (int i = 0; i < app->entities.size(); ++i)
                 {
                     Entity& entity = app->entities[i];
 
+                    //glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
                     glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
 
                     Model& model = app->models[entity.modelIndex];

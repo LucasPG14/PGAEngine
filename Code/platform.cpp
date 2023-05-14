@@ -404,6 +404,7 @@ void LogString(const char* str)
 #ifdef _WIN32
     OutputDebugStringA(str);
     OutputDebugStringA("\n");
+    fprintf(stderr, "%s\n", str);
 #else
     fprintf(stderr, "%s\n", str);
 #endif

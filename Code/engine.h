@@ -76,7 +76,7 @@ enum class LightType
 
 struct Light
 {
-    unsigned int type;
+    LightType type;
     vec3 color;
     vec3 direction;
     vec3 position;

@@ -16,6 +16,21 @@ out vec3 vPosition;
 out vec3 vNormal;
 out vec3 vViewDir;
 
+struct Light
+{
+    int type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
+
+layout(binding = 0, std140) uniform GlobalParams
+{
+    vec3 uCameraPosition;
+    unsigned int uLightCount;
+    Light uLights[16];
+};
+
 layout(binding = 1, std140) uniform LocalParams
 {
     mat4 uWorldMatrix;
@@ -27,11 +42,20 @@ void main()
     vTexCoord = aTexCoord;
     vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
     vNormal = vec3(uWorldMatrix * vec4(aNormal, 1.0));
+    vViewDir = uCameraPosition - vPosition;
 
     gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////
+
+struct Light
+{
+    int type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
 
 in vec2 vTexCoord;
 in vec3 vPosition;
@@ -40,11 +64,19 @@ in vec3 vViewDir;
 
 uniform sampler2D uTexture;
 
+layout(binding = 0, std140) uniform GlobalParams
+{
+    vec3 uCameraPosition;
+    unsigned int uLightCount;
+    Light uLights[16];
+};
+
 layout(location=0) out vec4 oColor;
 
 void main()
 {
     oColor = texture(uTexture, vTexCoord);
+    oColor = vec4(uLights[0].color, 1.0);
 }
 
 #endif
