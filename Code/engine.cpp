@@ -271,9 +271,6 @@ void Init(App* app)
     app->uniformBuffer = CreateBuffer(app->maxUniformBufferSize, GL_UNIFORM_BUFFER, GL_STATIC_DRAW);
     app->globalParamsOffset = app->uniformBuffer.head;
 
-    glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, 0, 40);
-    glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->uniformBuffer.handle, 40, 128);
-
     for (int i = -1; i <= 1; ++i)
     {
         Entity& entity = app->entities.emplace_back();
@@ -292,10 +289,10 @@ void Init(App* app)
         light.color = glm::vec3(1.0, 0.0, 0.0);
         light.position = glm::vec3(0.0, 0.0, 0.0);
         light.direction = glm::vec3(0.0, 0.0, 0.0);
-        light.type = LightType::DIRECTIONAL;
+        light.type = LightType::POINT;
     }
 
-    app->cBuffer = CreateBuffer(app->maxUniformBufferSize, GL_UNIFORM_BUFFER, GL_STATIC_DRAW);
+    //app->cBuffer = CreateBuffer(app->maxUniformBufferSize, GL_UNIFORM_BUFFER, GL_STATIC_DRAW);
     /*glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, 0, 36);*/
     //app->globalParamsOffset = app->uniformBuffer.head;
 
@@ -503,12 +500,12 @@ void Render(App* app)
                 Program& program = app->programs[app->texturedGeometryProgramIdx];
                 glUseProgram(program.handle);
 
-
+                glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
+                
                 for (int i = 0; i < app->entities.size(); ++i)
                 {
                     Entity& entity = app->entities[i];
 
-                    //glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
                     glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
 
                     Model& model = app->models[entity.modelIndex];
