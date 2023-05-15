@@ -7,6 +7,7 @@
 #include "platform.h"
 #include "RenderStructs.h"
 #include "Camera.h"
+#include "Framebuffer.h"
 #include <glad/glad.h>
 
 struct Image
@@ -161,6 +162,9 @@ struct App
     Buffer cBuffer;
     u32 globalParamsOffset;
     u32 globalParamsSize;
+
+    Framebuffer* fbo1;
+    Framebuffer* fbo2;
 };
 
 void Init(App* app);

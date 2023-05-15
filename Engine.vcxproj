@@ -23,6 +23,7 @@
     <ClCompile Include="Code\buffermanagement.cpp" />
     <ClCompile Include="Code\Camera.cpp" />
     <ClCompile Include="Code\engine.cpp" />
+    <ClCompile Include="Code\Framebuffer.cpp" />
     <ClCompile Include="Code\platform.cpp" />
     <ClCompile Include="ThirdParty\glad\include\glad\glad.c" />
     <ClCompile Include="ThirdParty\imgui-docking\imgui.cpp" />
@@ -39,6 +40,7 @@
     <ClInclude Include="Code\buffermanagement.h" />
     <ClInclude Include="Code\Camera.h" />
     <ClInclude Include="Code\engine.h" />
+    <ClInclude Include="Code\Framebuffer.h" />
     <ClInclude Include="Code\platform.h" />
     <ClInclude Include="Code\RenderStructs.h" />
     <ClInclude Include="ThirdParty\glad\include\glad\glad.h" />

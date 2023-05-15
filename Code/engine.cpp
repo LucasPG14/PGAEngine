@@ -312,6 +312,18 @@ void Init(App* app)
 
     glEnable(GL_DEPTH_TEST);
 
+    FramebufferData data = {};
+    data.spec = 
+    {
+        TextureAttachmentType::RGBA8,
+        TextureAttachmentType::RGBA8,
+        TextureAttachmentType::RGBA8,
+        TextureAttachmentType::RGBA8,
+        TextureAttachmentType::DEPTH
+    };
+
+    app->fbo1 = new Framebuffer(data);
+
     app->mode = Mode_TexturedQuad;
 
     app->camera.Init({0.0f, 0.0f, 5.0f}, 0.1f, 1000.0f, app->displaySize.x / app->displaySize.y);
