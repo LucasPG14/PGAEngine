@@ -3,50 +3,68 @@
 #include "platform.h"
 #include <vector>
 
-enum class TextureAttachmentType
+enum class FramebufferTextureFormat
 {
 	NONE = 0,
 
+	// Color
 	RGBA8 = 1,
 	RGBA16 = 2,
-	DEPTH = 3
+
+	// Red channel
+	RED_INTEGER = 3,
+
+	// Depth / Stencil
+	DEPTH24_STENCIL8 = 4
+};
+
+struct FramebufferTextureSpecification
+{
+	FramebufferTextureSpecification() = default;
+	FramebufferTextureSpecification(FramebufferTextureFormat format)
+		: textureFormat(format) {}
+
+	FramebufferTextureFormat textureFormat = FramebufferTextureFormat::NONE;
+};
+
+struct FramebufferAttachmentSpecification
+{
+	FramebufferAttachmentSpecification() = default;
+	FramebufferAttachmentSpecification(std::initializer_list<FramebufferTextureSpecification> attach)
+		: attachments(attach) {}
+
+	std::vector<FramebufferTextureSpecification> attachments;
 };
 
 struct FramebufferSpecification
 {
-	FramebufferSpecification(std::initializer_list<TextureAttachmentType> attach) 
-		: attachments(attach) {}
+	uint32_t width = 1280;
+	uint32_t height = 720;
 
-	std::vector<TextureAttachmentType> attachments;
-};
-
-struct FramebufferData
-{
-	u32 width = 1280;
-	u32 height = 720;
-
-	FramebufferSpecification spec;
+	FramebufferAttachmentSpecification attachments;
 };
 
 class Framebuffer
 {
 public:
-	Framebuffer(FramebufferData spec);
+	Framebuffer(u32 numColorAttachments, int w, int h);
 	~Framebuffer();
 
-	void Init();
+	void Init(u32 numColorAttachments);
 
 	void Bind();
 	void Unbind();
 
-private:
-	FramebufferData specification;
+	void BindTextures();
 
-	std::vector<TextureAttachmentType> colorTextures;
-	TextureAttachmentType depth;
+	u32 GetColorAttachment(u32 slot = 0) { return colorAttachments[slot]; }
+
+private:
+	u32 framebufferID;
 
 	std::vector<u32> colorAttachments;
 	u32 depthAttachment;
 
-	u32 framebufferId;
+	int width;
+	int height;
 };

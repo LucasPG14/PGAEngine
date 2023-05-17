@@ -39,6 +39,14 @@ enum Mode
     Mode_Count
 };
 
+enum class RenderMode
+{
+    FINAL_RENDER = 0,
+    POSITIONS = 1,
+    NORMALS = 2,
+    ALBEDO = 3
+};
+
 struct OpenGLInfo
 {
     std::string glVersion;
@@ -126,6 +134,8 @@ struct App
 
     // program indices
     u32 texturedGeometryProgramIdx;
+    u32 deferredIdx;
+    u32 finalQuadIdx;
     
     // texture indices
     u32 diceTexIdx;
@@ -165,6 +175,10 @@ struct App
 
     Framebuffer* fbo1;
     Framebuffer* fbo2;
+
+    RenderMode renderMode;
+
+    u32 sphereIdx;
 };
 
 void Init(App* app);

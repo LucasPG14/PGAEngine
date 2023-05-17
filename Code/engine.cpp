@@ -198,6 +198,29 @@ u32 LoadTexture2D(App* app, const char* filepath)
     }
 }
 
+void ChargeProgram(Program& program)
+{
+    i32 attributeCount;
+    glGetProgramiv(program.handle, GL_ACTIVE_ATTRIBUTES, &attributeCount);
+
+    for (int i = 0; i < attributeCount; ++i)
+    {
+        char attributeName[128] = {};
+
+        GLsizei attributeNameLength = 0;
+        GLsizei attributeSize = 0;
+        GLenum attributeType = 0;
+        glGetActiveAttrib(program.handle, i, ARRAY_COUNT(attributeName), &attributeNameLength, &attributeSize, &attributeType, attributeName);
+
+        GLint location = glGetAttribLocation(program.handle, attributeName);
+
+        VertexShaderAttribute attribute = {};
+        attribute.location = location;
+        attribute.componentCount = Utils::GetGLComponentCount(attributeType);
+        program.vertexInputLayout.attributes.push_back(attribute);
+    }
+}
+
 void Init(App* app)
 {
     app->glInfo.glVersion = reinterpret_cast<const char*>(glGetString(GL_VERSION));
@@ -235,26 +258,15 @@ void Init(App* app)
 
     app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "MESH_GEOMETRY");
     Program& program = app->programs[app->texturedGeometryProgramIdx];
-    
-    i32 attributeCount;
-    glGetProgramiv(program.handle, GL_ACTIVE_ATTRIBUTES, &attributeCount);
-    
-    for (int i = 0; i < attributeCount; ++i)
-    {
-        char attributeName[128] = {};
-        
-        GLsizei attributeNameLength = 0;
-        GLsizei attributeSize = 0;
-        GLenum attributeType = 0;
-        glGetActiveAttrib(program.handle, i, ARRAY_COUNT(attributeName), &attributeNameLength, &attributeSize, &attributeType, attributeName);
-        
-        GLint location = glGetAttribLocation(program.handle, attributeName);
+    ChargeProgram(program);
 
-        VertexShaderAttribute attribute = {};
-        attribute.location = location;
-        attribute.componentCount = Utils::GetGLComponentCount(attributeType);
-        program.vertexInputLayout.attributes.push_back(attribute);
-    }
+    app->deferredIdx = LoadProgram(app, "deferred.glsl", "DEFERRED");
+    Program& program2 = app->programs[app->deferredIdx];
+    ChargeProgram(program2);
+
+    app->finalQuadIdx = LoadProgram(app, "finalQuad.glsl", "FINAL_QUAD");
+    Program& program3 = app->programs[app->finalQuadIdx];
+    ChargeProgram(program3);
 
     app->programUniformTexture = glGetUniformLocation(program.handle, "uTexture");
 
@@ -271,10 +283,12 @@ void Init(App* app)
     app->uniformBuffer = CreateBuffer(app->maxUniformBufferSize, GL_UNIFORM_BUFFER, GL_STATIC_DRAW);
     app->globalParamsOffset = app->uniformBuffer.head;
 
+    app->sphereIdx = LoadModel(app, "sphere/sphere.obj");
+
     for (int i = -1; i <= 1; ++i)
     {
         Entity& entity = app->entities.emplace_back();
-        entity.modelIndex = LoadModel(app, "backpack/backpack.obj");
+        entity.modelIndex = LoadModel(app, "Patrick/Patrick.obj");
         entity.localParamsOffset = (sizeof(glm::mat4) * 2) * app->entities.size();
         entity.localParamsSize = sizeof(glm::mat4) * 2;
 
@@ -292,37 +306,9 @@ void Init(App* app)
         light.type = LightType::POINT;
     }
 
-    //app->cBuffer = CreateBuffer(app->maxUniformBufferSize, GL_UNIFORM_BUFFER, GL_STATIC_DRAW);
-    /*glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, 0, 36);*/
-    //app->globalParamsOffset = app->uniformBuffer.head;
-
-    //PushVec3(app->cBuffer, app->camera.GetPosition());
-
-    //PushUInt(app->cBuffer, app->lights.size());
-
-    //for (int i = 0; i < app->lights.size(); ++i)
-    //{
-    //    AlignHead(app->cBuffer, sizeof(vec4));
-
-    //    PushUInt(app->cBuffer, app->lights[i].type);
-    //    PushVec3(app->cBuffer, app->lights[i].color);
-    //    PushVec3(app->cBuffer, app->lights[i].direction);
-    //    PushVec3(app->cBuffer, app->lights[i].position);
-    //}
-
     glEnable(GL_DEPTH_TEST);
 
-    FramebufferData data = {};
-    data.spec = 
-    {
-        TextureAttachmentType::RGBA8,
-        TextureAttachmentType::RGBA8,
-        TextureAttachmentType::RGBA8,
-        TextureAttachmentType::RGBA8,
-        TextureAttachmentType::DEPTH
-    };
-
-    app->fbo1 = new Framebuffer(data);
+    app->fbo1 = new Framebuffer(3, app->displaySize.x, app->displaySize.y);
 
     app->mode = Mode_TexturedQuad;
 
@@ -331,10 +317,37 @@ void Init(App* app)
 
 void Gui(App* app)
 {
+    ImGui::BeginMainMenuBar();
+    if (ImGui::BeginMenu("Render Mode"))
+    {
+        if (ImGui::MenuItem("FINAL RENDER", "", app->renderMode == RenderMode::FINAL_RENDER))
+        {
+            app->renderMode = RenderMode::FINAL_RENDER;
+        }
+        if (ImGui::MenuItem("POSITIONS", "", app->renderMode == RenderMode::POSITIONS))
+        {
+            app->renderMode = RenderMode::POSITIONS;
+        }
+        if (ImGui::MenuItem("NORMALS", "", app->renderMode == RenderMode::NORMALS))
+        {
+            app->renderMode = RenderMode::NORMALS;
+        }
+        if (ImGui::MenuItem("ALBEDO", "", app->renderMode == RenderMode::ALBEDO))
+        {
+            app->renderMode = RenderMode::ALBEDO;
+        }
+        ImGui::EndMenu();
+    }
+    ImGui::EndMainMenuBar();
+
+    ImGui::Begin("Viewport");
+    ImGui::Image((void*)app->fbo1->GetColorAttachment(2), {(float)app->displaySize.x, (float)app->displaySize.y}, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+    ImGui::End();
+
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
 
-    if (ImGui::BeginPopup("OpenGL shit"))
+    if (ImGui::BeginPopup("OpenGL information"))
     {
         ImGui::Text("GL Version: ");
         ImGui::SameLine();
@@ -360,7 +373,6 @@ void Gui(App* app)
 
         ImGui::EndPopup();
     }
-    //ImGui::OpenPopup("OpenGL shit");
 
     for (int i = 0; i < app->entities.size(); ++i)
     {
@@ -505,11 +517,13 @@ void Render(App* app)
                 //   (...and make its texture sample from unit 0)
                 // - bind the vao
                 // - glDrawElements() !!!
+
+                app->fbo1->Bind();
                 glClearColor(0.1, 0.1, 0.1, 1.0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-                Program& program = app->programs[app->texturedGeometryProgramIdx];
+                Program& program = app->programs[app->deferredIdx];
                 glUseProgram(program.handle);
 
                 glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
@@ -541,6 +555,13 @@ void Render(App* app)
                     glBindVertexArray(0);
                 }
                 glUseProgram(0);
+                app->fbo1->Unbind();
+
+                glClearColor(0.1, 0.1, 0.1, 1.0);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                //Program& programQuad = app->programs[app->finalQuadIdx];
+                //glUseProgram(programQuad.handle);
 
                 //glBindVertexArray(app->vao);
                 //glEnable(GL_BLEND);
@@ -550,7 +571,16 @@ void Render(App* app)
                 //glActiveTexture(GL_TEXTURE0);
                 //glBindTexture(GL_TEXTURE_2D, app->textures[app->diceTexIdx].handle);
 
+                //app->fbo1->BindTextures();
+                //GLint location = glGetUniformLocation(programQuad.handle, "positions");
+                //glUniform1i(location, 0);
+                //location = glGetUniformLocation(programQuad.handle, "normals");
+                //glUniform1i(location, 1);
+                //location = glGetUniformLocation(programQuad.handle, "colors");
+                //glUniform1i(location, 2);
+                
                 //glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
+                //glUseProgram(0);
             }
             break;
 
