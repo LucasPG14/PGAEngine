@@ -283,21 +283,33 @@ void Init(App* app)
     app->uniformBuffer = CreateBuffer(app->maxUniformBufferSize, GL_UNIFORM_BUFFER, GL_STATIC_DRAW);
     app->globalParamsOffset = app->uniformBuffer.head;
 
-    app->sphereIdx = LoadModel(app, "sphere/sphere.obj");
+    app->sphereIdx = LoadModel(app, "sphere/sphere.fbx");
 
     for (int i = -1; i <= 1; ++i)
     {
         Entity& entity = app->entities.emplace_back();
-        entity.modelIndex = LoadModel(app, "Patrick/Patrick.obj");
+        entity.modelIndex = LoadModel(app, "backpack/backpack.obj");
         entity.localParamsOffset = (sizeof(glm::mat4) * 2) * app->entities.size();
         entity.localParamsSize = sizeof(glm::mat4) * 2;
 
         entity.position = vec3(i * 5.0f, 0.0f, 0.0f);
         entity.rotation = vec3(0.0f);
         entity.scale = vec3(1.0f);
+
+        entity.worldMatrix = glm::translate(entity.position);
+        entity.worldMatrix = glm::scale(entity.worldMatrix, entity.scale);
     }
 
     for (int i = 0; i < 3; ++i)
+    {
+        Light& light = app->lights.emplace_back();
+        light.color = glm::vec3(1.0, 0.0, 0.0);
+        light.position = glm::vec3(0.0, 0.0, 0.0);
+        light.direction = glm::vec3(0.0, 0.0, 0.0);
+        light.type = LightType::DIRECTIONAL;
+    }
+
+    for (int i = 0; i < 10; ++i)
     {
         Light& light = app->lights.emplace_back();
         light.color = glm::vec3(1.0, 0.0, 0.0);
@@ -379,13 +391,14 @@ void Gui(App* app)
         ImGui::PushID(i);
 
         Entity& entity = app->entities[i];
+        if (ImGui::CollapsingHeader(("Entity " + std::to_string(i)).c_str()))
+        {
+            ImGui::DragFloat3("Position", glm::value_ptr(entity.position));
+            ImGui::DragFloat3("Scale", glm::value_ptr(entity.scale));
 
-        ImGui::DragFloat3("Position", glm::value_ptr(entity.position));
-        ImGui::DragFloat3("Scale", glm::value_ptr(entity.scale));
-
-        entity.worldMatrix = glm::translate(entity.position);
-        entity.worldMatrix = glm::scale(entity.worldMatrix, entity.scale);
-
+            entity.worldMatrix = glm::translate(entity.position);
+            entity.worldMatrix = glm::scale(entity.worldMatrix, entity.scale);
+        }
         ImGui::PopID();
     }
 
