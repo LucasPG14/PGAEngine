@@ -34,4 +34,6 @@ private:
 	float aspectRatio;
 	float nearPlane;
 	float farPlane;
+
+	glm::vec2 mouseInitialPos;
 };

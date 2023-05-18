@@ -13,6 +13,7 @@
 #include "assimp_model_loading.h"
 #include "buffermanagement.h"
 #include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 namespace Utils
 {
@@ -267,6 +268,10 @@ void Init(App* app)
     app->finalQuadIdx = LoadProgram(app, "finalQuad.glsl", "FINAL_QUAD");
     Program& program3 = app->programs[app->finalQuadIdx];
     ChargeProgram(program3);
+    
+    app->lightsIdx = LoadProgram(app, "lights.glsl", "LIGHTS");
+    Program& program4 = app->programs[app->lightsIdx];
+    ChargeProgram(program4);
 
     app->programUniformTexture = glGetUniformLocation(program.handle, "uTexture");
 
@@ -285,7 +290,7 @@ void Init(App* app)
 
     app->sphereIdx = LoadModel(app, "sphere/sphere.fbx");
 
-    for (int i = -1; i <= 1; ++i)
+    for (int i = -3; i <= 3; ++i)
     {
         Entity& entity = app->entities.emplace_back();
         entity.modelIndex = LoadModel(app, "backpack/backpack.obj");
@@ -296,24 +301,46 @@ void Init(App* app)
         entity.rotation = vec3(0.0f);
         entity.scale = vec3(1.0f);
 
-        entity.worldMatrix = glm::translate(entity.position);
+        entity.worldMatrix = glm::translate(entity.position) * glm::eulerAngleXYZ(glm::radians(entity.rotation.x), glm::radians(entity.rotation.y), glm::radians(entity.rotation.z));
         entity.worldMatrix = glm::scale(entity.worldMatrix, entity.scale);
     }
 
-    for (int i = 0; i < 3; ++i)
+    for (int i = -1; i <= 1; ++i)
     {
         Light& light = app->lights.emplace_back();
-        light.color = glm::vec3(1.0, 0.0, 0.0);
-        light.position = glm::vec3(0.0, 0.0, 0.0);
+        if (glm::abs(i) % 3 == 0)
+        {
+            light.color = glm::vec3(1.0, 0.0, 0.0);
+        }
+        else if (glm::abs(i) % 3 == 1)
+        {
+            light.color = glm::vec3(0.0, 1.0, 0.0);
+        }
+        else if (glm::abs(i) % 3 == 2)
+        {
+            light.color = glm::vec3(0.0, 0.0, 1.0);
+        }
+        light.position = glm::vec3(0.0, 3.0 * i, -3.0);
         light.direction = glm::vec3(0.0, 0.0, 0.0);
         light.type = LightType::DIRECTIONAL;
     }
 
-    for (int i = 0; i < 10; ++i)
+    for (int i = -5; i < 5; ++i)
     {
         Light& light = app->lights.emplace_back();
-        light.color = glm::vec3(1.0, 0.0, 0.0);
-        light.position = glm::vec3(0.0, 0.0, 0.0);
+        if (glm::abs(i) % 3 == 0)
+        {
+            light.color = glm::vec3(1.0, 0.0, 0.0);
+        }
+        else if (glm::abs(i) % 3 == 1)
+        {
+            light.color = glm::vec3(0.0, 1.0, 0.0);
+        }
+        else if (glm::abs(i) % 3 == 2)
+        {
+            light.color = glm::vec3(0.0, 0.0, 1.0);
+        }
+        light.position = glm::vec3(3.0 * i, 0.0, 1.0);
         light.direction = glm::vec3(0.0, 0.0, 0.0);
         light.type = LightType::POINT;
     }
@@ -351,6 +378,20 @@ void Gui(App* app)
         if (ImGui::MenuItem("DEPTH", "", app->renderMode == RenderMode::DEPTH))
         {
             app->renderMode = RenderMode::DEPTH;
+        }
+        ImGui::EndMenu();
+    }
+    if (ImGui::BeginMenu("Create Lights"))
+    {
+        if (ImGui::MenuItem("Create Directional Light"))
+        {
+            Light& light = app->lights.emplace_back();
+            light.type = LightType::DIRECTIONAL;
+        }
+        if (ImGui::MenuItem("Create Point Light"))
+        {
+            Light& light = app->lights.emplace_back();
+            light.type = LightType::POINT;
         }
         ImGui::EndMenu();
     }
@@ -394,9 +435,10 @@ void Gui(App* app)
         if (ImGui::CollapsingHeader(("Entity " + std::to_string(i)).c_str()))
         {
             ImGui::DragFloat3("Position", glm::value_ptr(entity.position));
+            ImGui::DragFloat3("Rotation", glm::value_ptr(entity.rotation));
             ImGui::DragFloat3("Scale", glm::value_ptr(entity.scale));
 
-            entity.worldMatrix = glm::translate(entity.position);
+            entity.worldMatrix = glm::translate(entity.position) * glm::eulerAngleXYZ(glm::radians(entity.rotation.x), glm::radians(entity.rotation.y), glm::radians(entity.rotation.z));
             entity.worldMatrix = glm::scale(entity.worldMatrix, entity.scale);
         }
         ImGui::PopID();
@@ -412,7 +454,20 @@ void Gui(App* app)
         if (ImGui::CollapsingHeader(("Light " + std::to_string(i)).c_str()))
         {
             Light& light = app->lights[i];
-            
+
+            if (ImGui::BeginCombo("Light Type", light.type == LightType::DIRECTIONAL ? "Directional" : "Point"))
+            {
+                if (ImGui::MenuItem("Directional"))
+                {
+                    light.type = LightType::DIRECTIONAL;
+                }
+                if (ImGui::MenuItem("Point"))
+                {
+                    light.type = LightType::POINT;
+                }
+                //ImGui::Combo("Point");
+                ImGui::EndCombo();
+            }
             ImGui::DragFloat3("Position", glm::value_ptr(light.position));
             ImGui::DragFloat3("Direction", glm::value_ptr(light.direction));
             ImGui::ColorPicker4("Color", glm::value_ptr(light.color));
@@ -438,9 +493,10 @@ void Update(App* app)
     // Global Params
     for (int i = 0; i < app->lights.size(); ++i)
     {
+        Light& light = app->lights[i];
+
         AlignHead(app->uniformBuffer, sizeof(vec4));
         
-        Light& light = app->lights[i];
         PushUInt(app->uniformBuffer, (u32)light.type);
         PushVec3(app->uniformBuffer, light.color);
         PushVec3(app->uniformBuffer, light.direction);
@@ -599,37 +655,55 @@ void Render(App* app)
                 glUniform1i(location, (GLint)app->renderMode);
                 
                 glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
-
+                glBindVertexArray(0);
                 glUseProgram(0);
 
-                Program& programQuad = app->programs[app->finalQuadIdx];
-                glUseProgram(programQuad.handle);
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, app->fbo1->GetID());
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // write to default framebuffer
+                glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                
+                Program& programLights = app->programs[app->lightsIdx];
+                glUseProgram(programLights.handle);
+
                 for (int i = 0; i < app->lights.size(); ++i)
                 {
                     Light& light = app->lights[i];
+
                     glm::mat4 modelMatrix = glm::translate(light.position);
-                    modelMatrix = glm::scale(modelMatrix, vec3(1.0));
+                    modelMatrix = glm::scale(modelMatrix, vec3(0.4));
 
-                    Model& model = app->models[app->sphereIdx];
-                    Mesh& mesh = app->meshes[model.meshIdx];
+                    GLuint location = glGetUniformLocation(programLights.handle, "modelMatrix");
+                    glUniformMatrix4fv(location, 1, false, glm::value_ptr(modelMatrix));
+                    location = glGetUniformLocation(programLights.handle, "color");
+                    glUniform3fv(location, 1, glm::value_ptr(light.color));
+                    location = glGetUniformLocation(programLights.handle, "viewProjectionMatrix");
+                    glUniformMatrix4fv(location, 1, false, glm::value_ptr(app->camera.GetViewProjection()));
 
-                    for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+                    if (light.type == LightType::POINT)
                     {
-                        GLuint vao = FindVAO(mesh, i, program);
-                        glBindVertexArray(vao);
+                        Model& model = app->models[app->sphereIdx];
+                        Mesh& mesh = app->meshes[model.meshIdx];
 
-                        u32 submeshMaterialIdx = model.materialIdx[i];
-                        Material& submeshMaterial = app->materials[submeshMaterialIdx];
+                        for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+                        {
+                            GLuint vao = FindVAO(mesh, i, program);
+                            glBindVertexArray(vao);
 
-                        GLuint location = glGetUniformLocation(programQuad.handle, "modelMatrix");
-                        glUniformMatrix4fv(location, 1, false, glm::value_ptr(modelMatrix));
-                        location = glGetUniformLocation(programQuad.handle, "color");
-                        glUniformMatrix4fv(location, 1, false, glm::value_ptr(modelMatrix));
+                            u32 submeshMaterialIdx = model.materialIdx[i];
+                            Material& submeshMaterial = app->materials[submeshMaterialIdx];
 
-                        Submesh& submesh = mesh.submeshes[i];
-                        glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+                            Submesh& submesh = mesh.submeshes[i];
+                            glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+                        }
+                        glBindVertexArray(0);
                     }
-                    glBindVertexArray(0);
+                    else if (light.type == LightType::DIRECTIONAL)
+                    {
+                        glBindVertexArray(app->vao);
+                        glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
+                        glBindVertexArray(0);
+                    }
                 }
                 glUseProgram(0);
             }

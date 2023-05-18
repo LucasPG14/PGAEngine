@@ -107,8 +107,12 @@ vec3 CalcPointLight(vec3 position, vec3 color, vec3 vPosition, vec3 vNormal)
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = specularStrength * spec * color;  
 
-    //float distance = length(position - vPosition);
-    //float attenuation = 1.0 / (1.0 + light.linear * distance + light.quadratic * (distance * distance));
+    float distance = length(position - vPosition);
+    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
+
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
 
     return (ambient + diffuse + specular);
 }
@@ -119,7 +123,7 @@ void main()
     {
         vec3 color = texture(colors, vTexCoord).rgb;
         vec3 positionFrag = texture(positions, vTexCoord).rgb;
-        vec3 normalFrag = texture(normals, vTexCoord).rgb;
+        vec3 normalFrag = normalize(texture(normals, vTexCoord).rgb);
 
         for (int i = 0; i < uLightCount; ++i)
         {

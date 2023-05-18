@@ -56,6 +56,8 @@ public:
 	void Bind();
 	void Unbind();
 
+	u32 GetID() { return framebufferID; }
+
 	void BindColorTextures();
 	void BindDepthTexture();
 

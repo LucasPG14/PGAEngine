@@ -100,10 +100,10 @@ struct Vertex3V2V
 
 const Vertex3V2V vertices[] = 
 {
-    {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0.0, 0.0)},
-    {glm::vec3(0.5, -0.5, 0.0), glm::vec2(1.0, 0.0)},
-    {glm::vec3(0.5, 0.5, 0.0), glm::vec2(1.0, 1.0)},
-    {glm::vec3(-0.5, 0.5, 0.0), glm::vec2(0.0, 1.0)},
+    {glm::vec3(-1.0, -1.0, 0.0), glm::vec2(0.0, 0.0)},
+    {glm::vec3(1.0, -1.0, 0.0), glm::vec2(1.0, 0.0)},
+    {glm::vec3(1.0, 1.0, 0.0), glm::vec2(1.0, 1.0)},
+    {glm::vec3(-1.0, 1.0, 0.0), glm::vec2(0.0, 1.0)},
 };
 
 const u16 indices[] =
@@ -137,6 +137,7 @@ struct App
     u32 texturedGeometryProgramIdx;
     u32 deferredIdx;
     u32 finalQuadIdx;
+    u32 lightsIdx;
     
     // texture indices
     u32 diceTexIdx;
