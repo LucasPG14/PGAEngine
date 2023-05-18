@@ -51,6 +51,6 @@ void Camera::Update(Input input, f32 dt)
 
 void Camera::Resize(int width, int height)
 {
-	aspectRatio = width / height;
+	aspectRatio = (float)width / (float)height;
 	projection = glm::perspective(glm::radians(60.0f), aspectRatio, nearPlane, farPlane);
 }

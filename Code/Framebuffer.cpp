@@ -71,6 +71,7 @@ void Framebuffer::Resize(int w, int h)
 void Framebuffer::Bind()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferID);
+	glViewport(0, 0, width, height);
 }
 
 void Framebuffer::Unbind()

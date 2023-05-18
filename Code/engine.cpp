@@ -324,7 +324,7 @@ void Init(App* app)
 
     app->mode = Mode_TexturedQuad;
 
-    app->camera.Init({0.0f, 0.0f, 5.0f}, 0.1f, 1000.0f, app->displaySize.x / app->displaySize.y);
+    app->camera.Init({0.0f, 0.0f, 5.0f}, 0.1f, 1000.0f, (float)app->displaySize.x / (float)app->displaySize.y);
 }
 
 void Gui(App* app)
@@ -530,7 +530,8 @@ void Render(App* app)
                 //   (...and make its texture sample from unit 0)
                 // - bind the vao
                 // - glDrawElements() !!!
-
+                glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+                
                 app->fbo1->Bind();
                 glClearColor(0.0, 0.0, 0.0, 1.0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -572,13 +573,13 @@ void Render(App* app)
 
                 glClearColor(0.0, 0.0, 0.0, 1.0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+                
                 Program& programQuad = app->programs[app->finalQuadIdx];
                 glUseProgram(programQuad.handle);
 
                 glBindVertexArray(app->vao);
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                //glEnable(GL_BLEND);
+                //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
                 glUniform1i(app->programUniformTexture, 0);
                 glActiveTexture(GL_TEXTURE0);
@@ -598,6 +599,38 @@ void Render(App* app)
                 glUniform1i(location, (GLint)app->renderMode);
                 
                 glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
+
+                glUseProgram(0);
+
+                Program& programQuad = app->programs[app->finalQuadIdx];
+                glUseProgram(programQuad.handle);
+                for (int i = 0; i < app->lights.size(); ++i)
+                {
+                    Light& light = app->lights[i];
+                    glm::mat4 modelMatrix = glm::translate(light.position);
+                    modelMatrix = glm::scale(modelMatrix, vec3(1.0));
+
+                    Model& model = app->models[app->sphereIdx];
+                    Mesh& mesh = app->meshes[model.meshIdx];
+
+                    for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+                    {
+                        GLuint vao = FindVAO(mesh, i, program);
+                        glBindVertexArray(vao);
+
+                        u32 submeshMaterialIdx = model.materialIdx[i];
+                        Material& submeshMaterial = app->materials[submeshMaterialIdx];
+
+                        GLuint location = glGetUniformLocation(programQuad.handle, "modelMatrix");
+                        glUniformMatrix4fv(location, 1, false, glm::value_ptr(modelMatrix));
+                        location = glGetUniformLocation(programQuad.handle, "color");
+                        glUniformMatrix4fv(location, 1, false, glm::value_ptr(modelMatrix));
+
+                        Submesh& submesh = mesh.submeshes[i];
+                        glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+                    }
+                    glBindVertexArray(0);
+                }
                 glUseProgram(0);
             }
             break;
