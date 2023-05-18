@@ -252,7 +252,7 @@ void Init(App* app)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3V2V), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3V2V), (void*)(3*sizeof(float)));
-    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
     glBindVertexArray(0);
 
@@ -348,13 +348,13 @@ void Gui(App* app)
         {
             app->renderMode = RenderMode::ALBEDO;
         }
+        if (ImGui::MenuItem("DEPTH", "", app->renderMode == RenderMode::DEPTH))
+        {
+            app->renderMode = RenderMode::DEPTH;
+        }
         ImGui::EndMenu();
     }
     ImGui::EndMainMenuBar();
-
-    ImGui::Begin("Viewport");
-    ImGui::Image((void*)app->fbo1->GetColorAttachment(2), {(float)app->displaySize.x, (float)app->displaySize.y}, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-    ImGui::End();
 
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
@@ -532,7 +532,7 @@ void Render(App* app)
                 // - glDrawElements() !!!
 
                 app->fbo1->Bind();
-                glClearColor(0.1, 0.1, 0.1, 1.0);
+                glClearColor(0.0, 0.0, 0.0, 1.0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 glViewport(0, 0, app->displaySize.x, app->displaySize.y);
@@ -570,30 +570,35 @@ void Render(App* app)
                 glUseProgram(0);
                 app->fbo1->Unbind();
 
-                glClearColor(0.1, 0.1, 0.1, 1.0);
+                glClearColor(0.0, 0.0, 0.0, 1.0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-                //Program& programQuad = app->programs[app->finalQuadIdx];
-                //glUseProgram(programQuad.handle);
+                Program& programQuad = app->programs[app->finalQuadIdx];
+                glUseProgram(programQuad.handle);
 
-                //glBindVertexArray(app->vao);
-                //glEnable(GL_BLEND);
-                //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                glBindVertexArray(app->vao);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-                //glUniform1i(app->programUniformTexture, 0);
-                //glActiveTexture(GL_TEXTURE0);
-                //glBindTexture(GL_TEXTURE_2D, app->textures[app->diceTexIdx].handle);
+                glUniform1i(app->programUniformTexture, 0);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, app->textures[app->diceTexIdx].handle);
 
-                //app->fbo1->BindTextures();
-                //GLint location = glGetUniformLocation(programQuad.handle, "positions");
-                //glUniform1i(location, 0);
-                //location = glGetUniformLocation(programQuad.handle, "normals");
-                //glUniform1i(location, 1);
-                //location = glGetUniformLocation(programQuad.handle, "colors");
-                //glUniform1i(location, 2);
+                app->fbo1->BindColorTextures();
+                app->fbo1->BindDepthTexture();
+                GLint location = glGetUniformLocation(programQuad.handle, "positions");
+                glUniform1i(location, 0);
+                location = glGetUniformLocation(programQuad.handle, "normals");
+                glUniform1i(location, 1);
+                location = glGetUniformLocation(programQuad.handle, "colors");
+                glUniform1i(location, 2);
+                location = glGetUniformLocation(programQuad.handle, "depth");
+                glUniform1i(location, 3);
+                location = glGetUniformLocation(programQuad.handle, "renderMode");
+                glUniform1i(location, (GLint)app->renderMode);
                 
-                //glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
-                //glUseProgram(0);
+                glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
+                glUseProgram(0);
             }
             break;
 

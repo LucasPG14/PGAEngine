@@ -15,6 +15,8 @@ public:
 	void Init(glm::vec3 pos, float near, float far, float aspRatio);
 	void Update(Input input, f32 dt);
 
+	void Resize(int width, int height);
+
 	const glm::mat4& GetViewMatrix() { return view; }
 	const glm::mat4& GetProjectionMatrix() { return projection; }
 	const glm::mat4 GetViewProjection() { return projection * view; }

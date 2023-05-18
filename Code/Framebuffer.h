@@ -51,11 +51,13 @@ public:
 	~Framebuffer();
 
 	void Init(u32 numColorAttachments);
+	void Resize(int w, int h);
 
 	void Bind();
 	void Unbind();
 
-	void BindTextures();
+	void BindColorTextures();
+	void BindDepthTexture();
 
 	u32 GetColorAttachment(u32 slot = 0) { return colorAttachments[slot]; }
 

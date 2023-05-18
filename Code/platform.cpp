@@ -104,8 +104,12 @@ void OnGlfwCharEvent(GLFWwindow* window, unsigned int character)
 
 void OnGlfwResizeFramebuffer(GLFWwindow* window, int width, int height)
 {
+    if (width == 0 || height == 0)
+        return;
     App* app = (App*)glfwGetWindowUserPointer(window);
     app->displaySize = vec2(width, height);
+    app->fbo1->Resize(width, height);
+    app->camera.Resize(width, height);
 }
 
 void OnGlfwCloseWindow(GLFWwindow* window)

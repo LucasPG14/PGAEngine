@@ -48,3 +48,9 @@ void Camera::Update(Input input, f32 dt)
 
 	view = glm::lookAt(position, position + front, glm::vec3(0, 1, 0));
 }
+
+void Camera::Resize(int width, int height)
+{
+	aspectRatio = width / height;
+	projection = glm::perspective(glm::radians(60.0f), aspectRatio, nearPlane, farPlane);
+}

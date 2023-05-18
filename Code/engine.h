@@ -44,7 +44,8 @@ enum class RenderMode
     FINAL_RENDER = 0,
     POSITIONS = 1,
     NORMALS = 2,
-    ALBEDO = 3
+    ALBEDO = 3,
+    DEPTH = 4
 };
 
 struct OpenGLInfo

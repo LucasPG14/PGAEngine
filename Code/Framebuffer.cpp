@@ -13,6 +13,14 @@ Framebuffer::~Framebuffer()
 
 void Framebuffer::Init(u32 numColorAttachments)
 {
+	if (framebufferID != 0)
+	{
+		glDeleteTextures(colorAttachments.size(), colorAttachments.data());
+		glDeleteTextures(1, &depthAttachment);
+
+		glDeleteFramebuffers(1, &framebufferID);
+	}
+
 	glGenFramebuffers(1, &framebufferID);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferID);
 	colorAttachments.resize(numColorAttachments);
@@ -53,6 +61,13 @@ void Framebuffer::Init(u32 numColorAttachments)
 	}
 }
 
+void Framebuffer::Resize(int w, int h)
+{
+	width = w;
+	height = h;
+	Init(colorAttachments.size());
+}
+
 void Framebuffer::Bind()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferID);
@@ -63,7 +78,13 @@ void Framebuffer::Unbind()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Framebuffer::BindTextures()
+void Framebuffer::BindDepthTexture()
+{
+	glActiveTexture(GL_TEXTURE0 + colorAttachments.size());
+	glBindTexture(GL_TEXTURE_2D, depthAttachment);
+}
+
+void Framebuffer::BindColorTextures()
 {
 	for (int i = 0; i < colorAttachments.size(); ++i)
 	{

@@ -7,14 +7,11 @@
 
 layout(location=0) in vec3 aPosition;
 //layout(location=1) in vec3 aNormal;
-layout(location=1) in vec2 aTexCoord;
+layout(location=2) in vec2 aTexCoord;
 //layout(location=3) in vec3 aTangent;
 //layout(location=4) in vec3 aBiTangent;
 
 out vec2 vTexCoord;
-out vec3 vPosition;
-out vec3 vNormal;
-out vec3 vViewDir;
 
 struct Light
 {
@@ -54,13 +51,13 @@ struct Light
 };
 
 in vec2 vTexCoord;
-in vec3 vPosition;
-in vec3 vNormal;
-in vec3 vViewDir;
 
 layout(location = 0) uniform sampler2D positions;
 layout(location = 1) uniform sampler2D normals;
 layout(location = 2) uniform sampler2D colors;
+layout(location = 3) uniform sampler2D depth;
+
+uniform int renderMode;
 
 layout(binding = 0, std140) uniform GlobalParams
 {
@@ -71,7 +68,7 @@ layout(binding = 0, std140) uniform GlobalParams
 
 layout(location = 0) out vec4 oColor;
 
-vec3 CalcDirectionalLight(vec3 direction, vec3 color)
+vec3 CalcDirectionalLight(vec3 direction, vec3 color, vec3 vPosition, vec3 vNormal)
 {
     float ambientStrength = 0.1;
     vec3 ambient = ambientStrength * color;
@@ -92,7 +89,7 @@ vec3 CalcDirectionalLight(vec3 direction, vec3 color)
     return (ambient + diffuse + specular);
 }
 
-vec3 CalcPointLight(vec3 position, vec3 color)
+vec3 CalcPointLight(vec3 position, vec3 color, vec3 vPosition, vec3 vNormal)
 {
     float ambientStrength = 0.1;
     vec3 ambient = ambientStrength * color;
@@ -118,24 +115,43 @@ vec3 CalcPointLight(vec3 position, vec3 color)
 
 void main()
 {
-    //vec3 color = texture(uTexture, vTexCoord).rgb;
-//
-    //for (int i = 0; i < uLightCount; ++i)
-    //{
-    //    vec3 result;
-    //    if (uLights[i].type == 0)
-    //    {
-    //        result = CalcDirectionalLight(uLights[i].direction, uLights[i].color) * color;
-    //    }
-    //    else if (uLights[i].type == 1)
-    //    {
-    //        result = CalcPointLight(uLights[i].position, uLights[i].color) * color;
-    //    }
-//
-    //    oColor += vec4(result, 1.0);
-    //}
+    if (renderMode == 0)
+    {
+        vec3 color = texture(colors, vTexCoord).rgb;
+        vec3 positionFrag = texture(positions, vTexCoord).rgb;
+        vec3 normalFrag = texture(normals, vTexCoord).rgb;
 
-    oColor = vec4(texture(positions, vTexCoord).rgb, 1.0);
+        for (int i = 0; i < uLightCount; ++i)
+        {
+            vec3 result;
+            if (uLights[i].type == 0)
+            {
+                result = CalcDirectionalLight(uLights[i].direction, uLights[i].color, positionFrag, normalFrag) * color;
+            }
+            else if (uLights[i].type == 1)
+            {
+                result = CalcPointLight(uLights[i].position, uLights[i].color, positionFrag, normalFrag) * color;
+            }
+
+            oColor += vec4(result, 1.0);
+        }
+    }
+    else if (renderMode == 1)
+    {
+        oColor = vec4(texture(positions, vTexCoord).rgb, 1.0);
+    }
+    else if (renderMode == 2)
+    {
+        oColor = vec4(texture(normals, vTexCoord).rgb, 1.0);
+    }
+    else if (renderMode == 3)
+    {
+        oColor = vec4(texture(colors, vTexCoord).rgb, 1.0);
+    }
+    else if (renderMode == 4)
+    {
+        oColor = vec4(vec3(texture(depth, vTexCoord).r), 1.0);
+    }
 
     //oColor = vec4(result, 1.0);
     //oColor = vec4(uLights[0].color, 1.0);
