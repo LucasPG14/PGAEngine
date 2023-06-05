@@ -38,9 +38,9 @@ The following controls must be done pressing the right mouse button):
 
 ## Shaders used
 
-- ![Mesh shader](WorkingDir/mesh.glsl): This one renders all the entities on the scene.
-- ![Bloom](WorkingDir/bloom.glsl): This one creates the blurry image that it is used to combine with the final scene texture.
-- ![Relief Mapping](WorkingDir/relief.glsl): This one is used to render the objects with relief mapping.
-- ![Lights](WorkingDir/lights.glsl): This one renders all the lights to see where are they positioned.
-- ![Deferred Quad](WorkingDir/deferred.glsl): This one is used to render the final quad in deferred mode.
-- ![Forward Quad](WorkingDir/quadForward.glsl): This one is used to render the final quad in forward mode.
+- [Mesh shader](WorkingDir/mesh.glsl): This one renders all the entities on the scene.
+- [Bloom](WorkingDir/bloom.glsl): This one creates the blurry image that it is used to combine with the final scene texture.
+- [Relief Mapping](WorkingDir/relief.glsl): This one is used to render the objects with relief mapping.
+- [Lights](WorkingDir/lights.glsl): This one renders all the lights to see where are they positioned.
+- [Deferred Quad](WorkingDir/deferred.glsl): This one is used to render the final quad in deferred mode.
+- [Forward Quad](WorkingDir/quadForward.glsl): This one is used to render the final quad in forward mode.
