@@ -281,6 +281,10 @@ void Init(App* app)
     Program& program6 = app->programs[app->quadForwardIdx];
     ChargeProgram(program6);
 
+    app->reliefIdx = LoadProgram(app, "relief.glsl", "RELIEF");
+    Program& program7 = app->programs[app->reliefIdx];
+    ChargeProgram(program7);
+
     app->programUniformTexture = glGetUniformLocation(program2.handle, "uTexture");
     app->normalsUniformTexture = glGetUniformLocation(program2.handle, "normalTexture");
     app->depthUniformTexture = glGetUniformLocation(program2.handle, "depthTexture");
@@ -304,12 +308,13 @@ void Init(App* app)
 
     app->sphereIdx = LoadModel(app, "sphere/sphere.fbx");
 
-    for (int i = 0; i < 1; ++i)
+    for (int i = -1; i <= 1; ++i)
     {
         Entity& entity = app->entities.emplace_back();
         entity.modelIndex = LoadModel(app, "backpack/backpack.obj");
         entity.localParamsOffset = (sizeof(glm::mat4) * 2) * app->entities.size();
         entity.localParamsSize = sizeof(glm::mat4) * 2;
+        entity.relief = false;
 
         entity.position = vec3(i * 5.0f, 0.0f, 0.0f);
         entity.rotation = vec3(0.0f);
@@ -318,6 +323,19 @@ void Init(App* app)
         entity.worldMatrix = glm::translate(entity.position) * glm::eulerAngleXYZ(glm::radians(entity.rotation.x), glm::radians(entity.rotation.y), glm::radians(entity.rotation.z));
         entity.worldMatrix = glm::scale(entity.worldMatrix, entity.scale);
     }
+
+    Entity& entity = app->entities.emplace_back();
+    entity.modelIndex = LoadModel(app, "sphere/sphere.fbx");
+    entity.localParamsOffset = (sizeof(glm::mat4) * 2) * app->entities.size();
+    entity.localParamsSize = sizeof(glm::mat4) * 2;
+    entity.relief = true;
+
+    entity.position = vec3(0.0f, 0.0f, -5.0f);
+    entity.rotation = vec3(0.0f, 90.0f, 0.0f);
+    entity.scale = vec3(1.0f);
+
+    entity.worldMatrix = glm::translate(entity.position) * glm::eulerAngleXYZ(glm::radians(entity.rotation.x), glm::radians(entity.rotation.y), glm::radians(entity.rotation.z));
+    entity.worldMatrix = glm::scale(entity.worldMatrix, entity.scale);
 
     for (int i = -1; i <= 1; ++i)
     {
@@ -410,6 +428,17 @@ void Gui(App* app)
         {
             app->renderMode = RenderMode::FORWARD;
         }
+        ImGui::EndMenu();
+    }
+    if (ImGui::BeginMenu("Render Options"))
+    {
+        ImGui::Checkbox("HDR", &app->hdr);
+        ImGui::Separator();
+        ImGui::Text("Relief Mapping optins");
+        ImGui::DragFloat("Min layers", &app->minLayers);
+        ImGui::DragFloat("Max layers", &app->maxLayers);
+        ImGui::DragFloat("Height scale", &app->heightScale);
+        ImGui::Separator();
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Create Lights"))
@@ -624,11 +653,6 @@ void Render(App* app)
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-                Program& program = app->programs[app->deferredIdx];
-                glUseProgram(program.handle);
-
-                GLuint location = glGetUniformLocation(program.handle, "renderMode");
-                glUniform1i(location, (GLint)app->renderMode);
 
                 glEnable(GL_DEPTH_TEST);
 
@@ -637,6 +661,20 @@ void Render(App* app)
                 for (int i = 0; i < app->entities.size(); ++i)
                 {
                     Entity& entity = app->entities[i];
+                    Program program;
+
+                    if (!entity.relief)
+                    {
+                        program = app->programs[app->deferredIdx];
+                    }
+                    else
+                    {
+                        program = app->programs[app->reliefIdx];
+                    }
+                    glUseProgram(program.handle);
+
+                    GLuint location = glGetUniformLocation(program.handle, "renderMode");
+                    glUniform1i(location, (GLint)app->renderMode);
 
                     glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->uniformBuffer.handle, entity.localParamsOffset, entity.localParamsSize);
 
@@ -654,12 +692,24 @@ void Render(App* app)
                         glUniform1i(app->programUniformTexture, 0);
                         glActiveTexture(GL_TEXTURE0);
                         glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
-                        //glUniform1i(app->normalsUniformTexture, 1);
-                        //glActiveTexture(GL_TEXTURE1);
-                        //glBindTexture(GL_TEXTURE_2D, app->textures[app->normalMapTexIdx].handle);
-                        //glUniform1i(app->depthUniformTexture, 2);
-                        //glActiveTexture(GL_TEXTURE2);
-                        //glBindTexture(GL_TEXTURE_2D, app->textures[app->depthMapTexIdx].handle);
+                        if (entity.relief)
+                        {
+                            glActiveTexture(GL_TEXTURE0);
+                            glBindTexture(GL_TEXTURE_2D, app->textures[app->diffuseWallTexIdx].handle);
+                            glUniform1i(app->normalsUniformTexture, 1);
+                            glActiveTexture(GL_TEXTURE1);
+                            glBindTexture(GL_TEXTURE_2D, app->textures[app->normalMapTexIdx].handle);
+                            glUniform1i(app->depthUniformTexture, 2);
+                            glActiveTexture(GL_TEXTURE2);
+                            glBindTexture(GL_TEXTURE_2D, app->textures[app->depthMapTexIdx].handle);
+
+                            location = glGetUniformLocation(program.handle, "minLayers");
+                            glUniform1f(location, app->minLayers);
+                            location = glGetUniformLocation(program.handle, "maxLayers");
+                            glUniform1f(location, app->maxLayers);
+                            location = glGetUniformLocation(program.handle, "heightScale");
+                            glUniform1f(location, app->heightScale);
+                        }
 
                         Submesh& submesh = mesh.submeshes[i];
                         glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
@@ -694,7 +744,7 @@ void Render(App* app)
 
                         for (u32 i = 0; i < mesh.submeshes.size(); ++i)
                         {
-                            GLuint vao = FindVAO(mesh, i, program);
+                            GLuint vao = FindVAO(mesh, i, programLights);
                             glBindVertexArray(vao);
 
                             u32 submeshMaterialIdx = model.materialIdx[i];
@@ -784,23 +834,26 @@ void Render(App* app)
                 app->fbo1->BindColorTextures();
                 app->fbo1->BindDepthTexture();
 
-                glActiveTexture(GL_TEXTURE5);
+                glActiveTexture(GL_TEXTURE6);
                 glBindTexture(GL_TEXTURE_2D, app->fboBloom2->GetColorAttachment());
 
-                location = glGetUniformLocation(programQuad.handle, "positions");
+                GLuint location = glGetUniformLocation(programQuad.handle, "positions");
                 glUniform1i(location, 0);
                 location = glGetUniformLocation(programQuad.handle, "normals");
                 glUniform1i(location, 1);
                 location = glGetUniformLocation(programQuad.handle, "colors");
                 glUniform1i(location, 2);
                 location = glGetUniformLocation(programQuad.handle, "forwardColor");
-                glUniform1i(location, 3);
-                location = glGetUniformLocation(programQuad.handle, "depth");
                 glUniform1i(location, 4);
-                location = glGetUniformLocation(programQuad.handle, "bloom");
+                location = glGetUniformLocation(programQuad.handle, "depth");
                 glUniform1i(location, 5);
+                location = glGetUniformLocation(programQuad.handle, "bloom");
+                glUniform1i(location, 6);
                 location = glGetUniformLocation(programQuad.handle, "renderMode");
                 glUniform1i(location, (GLint)app->textureToRender);
+
+                location = glGetUniformLocation(programQuad.handle, "hdrActive");
+                glUniform1i(location, (GLint)app->hdr);
 
                 glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
                 glBindVertexArray(0);

@@ -69,7 +69,7 @@ void Camera::Update(Input input, f32 dt)
 			newPos -= up * 0.025f;
 		}
 
-		if (input.keys[K_LEFT_CTRL] == BUTTON_PRESSED)
+		if (input.keys[K_LEFT_ALT] == BUTTON_PRESSED)
 		{
 			glm::quat orbit = glm::quat(glm::vec3(position.z >= 0.0f ? delta.y * 2.0f : -delta.y * 2.0f, delta.x * 2.0f, 0.0));
 			

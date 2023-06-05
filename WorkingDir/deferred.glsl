@@ -55,10 +55,12 @@ in vec2 vTexCoord;
 layout(location = 0) uniform sampler2D positions;
 layout(location = 1) uniform sampler2D normals;
 layout(location = 2) uniform sampler2D colors;
-layout(location = 3) uniform sampler2D depth;
-layout(location = 4) uniform sampler2D bloom;
+layout(location = 4) uniform sampler2D forwardColor;
+layout(location = 5) uniform sampler2D depth;
+layout(location = 6) uniform sampler2D bloom;
 
 uniform int renderMode;
+uniform int hdrActive;
 
 layout(binding = 0, std140) uniform GlobalParams
 {
@@ -126,22 +128,36 @@ void main()
         vec3 positionFrag = texture(positions, vTexCoord).rgb;
         vec3 normalFrag = normalize(texture(normals, vTexCoord).rgb);
 
+        vec3 result;
         for (int i = 0; i < uLightCount; ++i)
         {
-            vec3 result;
             if (uLights[i].type == 0)
             {
-                result = CalcDirectionalLight(uLights[i].direction, uLights[i].color, positionFrag, normalFrag) * color;
+                result += CalcDirectionalLight(uLights[i].direction, uLights[i].color, positionFrag, normalFrag) * color;
             }
             else if (uLights[i].type == 1)
             {
-                result = CalcPointLight(uLights[i].position, uLights[i].color, positionFrag, normalFrag) * color;
+                result += CalcPointLight(uLights[i].position, uLights[i].color, positionFrag, normalFrag) * color;
             }
-
-            oColor += vec4(result, 1.0);
         }
 
-        oColor += vec4(texture(bloom, vTexCoord).rgb, 1.0);
+        if (hdrActive == 0)
+        {
+            const float gamma = 2.2;
+  
+            // reinhard tone mapping
+            vec3 mapped = result / (result + vec3(1.0));
+            // gamma correction 
+            mapped = pow(mapped, vec3(1.0 / gamma));
+  
+            oColor = vec4(mapped, 1.0);
+            oColor += vec4(texture(bloom, vTexCoord).rgb, 1.0);
+        }
+        else
+        {
+            oColor += vec4(result, 1.0);
+            oColor += vec4(texture(bloom, vTexCoord).rgb, 1.0);
+        }
     }
     else if (renderMode == 1)
     {
@@ -159,9 +175,6 @@ void main()
     {
         oColor = vec4(vec3(texture(depth, vTexCoord).r), 1.0);
     }
-
-    //oColor = vec4(result, 1.0);
-    //oColor = vec4(uLights[0].color, 1.0);
 }
 
 #endif

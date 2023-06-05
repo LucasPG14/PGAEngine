@@ -73,6 +73,8 @@ struct Entity
     u32 modelIndex;
     u32 localParamsOffset;
     u32 localParamsSize;
+
+    bool relief;
 };
 
 struct Buffer
@@ -146,6 +148,7 @@ struct App
     u32 lightsIdx;
     u32 bloomIdx;
     u32 quadForwardIdx;
+    u32 reliefIdx;
     
     // texture indices
     u32 diceTexIdx;
@@ -195,6 +198,12 @@ struct App
 
     TextureToRender textureToRender;
     RenderMode renderMode;
+
+    bool hdr = true;
+
+    float minLayers = 10.0f;
+    float maxLayers = 32.0f;
+    float heightScale = -0.3f;
 
     u32 sphereIdx;
 };

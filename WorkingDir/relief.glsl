@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
-#ifdef MESH
+#ifdef RELIEF
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
@@ -81,6 +81,9 @@ layout(location = 1) uniform sampler2D normalTexture;
 layout(location = 2) uniform sampler2D depthTexture;
 
 uniform int renderMode;
+uniform float minLayers;
+uniform float maxLayers;
+uniform float heightScale;
 
 layout(binding = 0, std140) uniform GlobalParams
 {
@@ -94,6 +97,39 @@ layout(location = 1) out vec4 normals;
 layout(location = 2) out vec4 colors;
 layout(location = 3) out vec4 brightColor;
 layout(location = 4) out vec4 forwardColor;
+
+vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
+{
+    const float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDir)));
+    float layerDepth = 1.0 / numLayers;
+
+    float currentLayerDepth = 0.0;
+
+    vec2 P = viewDir.xy / viewDir.z * heightScale;
+    vec2 deltaTexCoords = P / numLayers;
+
+    vec2 currentTexCoords = texCoords;
+    float currentDepthMapValue = texture(depthTexture, currentTexCoords).r;
+
+    while(currentLayerDepth < currentDepthMapValue)
+    {
+        currentTexCoords -= deltaTexCoords;
+        
+        currentDepthMapValue = texture(depthTexture, currentTexCoords).r;  
+   
+        currentLayerDepth += layerDepth;  
+    }
+
+    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+
+    float afterDepth = currentDepthMapValue - currentLayerDepth;
+    float beforeDepth = texture(depthTexture, prevTexCoords).r - currentLayerDepth + layerDepth;
+
+    float weight = afterDepth / (afterDepth - beforeDepth);
+    vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+    
+    return finalTexCoords;
+}
 
 vec3 CalcDirectionalLight(vec3 direction, vec3 color, vec3 vPosition, vec3 vNormal)
 {
@@ -147,10 +183,14 @@ vec3 CalcPointLight(vec3 position, vec3 color, vec3 fragPosition, vec3 normal)
 void main()
 { 
     positions = vec4(vPosition, 1.0);
-    vec3 normal = normalize(vNormal * 2.0 - 1.0);
+
+    vec3 viewDir = normalize(vTangentViewPos - vTangentFragPos);
+    vec2 texCoords = ParallaxMapping(vTexCoord, viewDir);
+    vec3 normal = texture(normalTexture, texCoords).rgb;
+    normal = normalize(normal * 2.0 - 1.0);
     normals = vec4(normal, 1.0);
 
-    colors = vec4(texture(uTexture, vTexCoord).rgb, 1.0);
+    colors = vec4(texture(uTexture, texCoords).rgb, 1.0);
     
     float brightness = dot(colors.rgb, vec3(0.2126, 0.7152, 0.0722));
     if(brightness > 0.0)

@@ -34,11 +34,12 @@ struct Light
 layout(location = 0) uniform sampler2D positions;
 layout(location = 1) uniform sampler2D normals;
 layout(location = 2) uniform sampler2D colors;
-layout(location = 3) uniform sampler2D forwardColor;
-layout(location = 4) uniform sampler2D depth;
-layout(location = 5) uniform sampler2D bloom;
+layout(location = 4) uniform sampler2D forwardColor;
+layout(location = 5) uniform sampler2D depth;
+layout(location = 6) uniform sampler2D bloom;
 
 uniform int renderMode;
+uniform int hdrActive;
 
 layout(binding = 0, std140) uniform GlobalParams
 {
@@ -51,7 +52,43 @@ layout(location = 0) out vec4 oColor;
 
 void main()
 {
-    oColor = vec4(texture(forwardColor, vTexCoord).rgb + texture(bloom, vTexCoord).rgb, 1.0);
+    if (renderMode == 0)
+    {
+        vec3 colorFinal = texture(forwardColor, vTexCoord).rgb;
+        if (hdrActive == 0)
+        {
+            const float gamma = 2.2;
+  
+            // reinhard tone mapping
+            vec3 mapped = colorFinal / (colorFinal + vec3(1.0));
+            // gamma correction 
+            mapped = pow(mapped, vec3(1.0 / gamma));
+  
+            oColor = vec4(mapped, 1.0);
+            oColor += vec4(texture(bloom, vTexCoord).rgb, 1.0);
+        }
+        else
+        {
+            oColor += vec4(colorFinal, 1.0);
+            oColor += vec4(texture(bloom, vTexCoord).rgb, 1.0);
+        }
+    }
+    if (renderMode == 1)
+    {
+        oColor = vec4(texture(positions, vTexCoord).rgb, 1.0);
+    }
+    if (renderMode == 2)
+    {
+        oColor = vec4(texture(normals, vTexCoord).rgb, 1.0);
+    }
+    if (renderMode == 3)
+    {
+        oColor = vec4(texture(colors, vTexCoord).rgb, 1.0);
+    }
+    if (renderMode == 4)
+    {
+        oColor = vec4(vec3(texture(depth, vTexCoord).r), 1.0);
+    }
 }
 
 #endif
