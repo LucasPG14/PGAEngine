@@ -119,14 +119,15 @@ void OnGlfwCloseWindow(GLFWwindow* window)
     app->isRunning = false;
 }
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+//int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
+int main()
 {
     App app         = {};
     app.deltaTime   = 1.0f/60.0f;
     app.displaySize = ivec2(WINDOW_WIDTH, WINDOW_HEIGHT);
     app.isRunning   = true;
 
-		glfwSetErrorCallback(OnGlfwError);
+	glfwSetErrorCallback(OnGlfwError);
 
     if (!glfwInit())
     {
@@ -231,13 +232,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         Update(&app);
 
         // Transition input key/button states
-            for (u32 i = 0; i < KEY_COUNT; ++i)
-                if      (app.input.keys[i] == BUTTON_PRESS)   app.input.keys[i] = BUTTON_PRESSED;
-                else if (app.input.keys[i] == BUTTON_RELEASE) app.input.keys[i] = BUTTON_IDLE;
+        for (u32 i = 0; i < KEY_COUNT; ++i)
+            if      (app.input.keys[i] == BUTTON_PRESS)   app.input.keys[i] = BUTTON_PRESSED;
+            else if (app.input.keys[i] == BUTTON_RELEASE) app.input.keys[i] = BUTTON_IDLE;
 
-            for (u32 i = 0; i < MOUSE_BUTTON_COUNT; ++i)
-                if      (app.input.mouseButtons[i] == BUTTON_PRESS)   app.input.mouseButtons[i] = BUTTON_PRESSED;
-                else if (app.input.mouseButtons[i] == BUTTON_RELEASE) app.input.mouseButtons[i] = BUTTON_IDLE;
+        for (u32 i = 0; i < MOUSE_BUTTON_COUNT; ++i)
+            if      (app.input.mouseButtons[i] == BUTTON_PRESS)   app.input.mouseButtons[i] = BUTTON_PRESSED;
+            else if (app.input.mouseButtons[i] == BUTTON_RELEASE) app.input.mouseButtons[i] = BUTTON_IDLE;
 
         app.input.mouseDelta = glm::vec2(0.0f, 0.0f);
 

@@ -261,11 +261,11 @@ void Init(App* app)
     Program& program = app->programs[app->texturedGeometryProgramIdx];
     ChargeProgram(program);
 
-    app->deferredIdx = LoadProgram(app, "deferred.glsl", "DEFERRED");
+    app->deferredIdx = LoadProgram(app, "mesh.glsl", "MESH");
     Program& program2 = app->programs[app->deferredIdx];
     ChargeProgram(program2);
 
-    app->finalQuadIdx = LoadProgram(app, "finalQuad.glsl", "FINAL_QUAD");
+    app->finalQuadIdx = LoadProgram(app, "deferred.glsl", "DEFERRED");
     Program& program3 = app->programs[app->finalQuadIdx];
     ChargeProgram(program3);
     
@@ -273,13 +273,19 @@ void Init(App* app)
     Program& program4 = app->programs[app->lightsIdx];
     ChargeProgram(program4);
 
-    app->programUniformTexture = glGetUniformLocation(program.handle, "uTexture");
+    app->programUniformTexture = glGetUniformLocation(program2.handle, "uTexture");
+    app->normalsUniformTexture = glGetUniformLocation(program2.handle, "normalTexture");
+    app->depthUniformTexture = glGetUniformLocation(program2.handle, "depthTexture");
 
     app->diceTexIdx = LoadTexture2D(app, "dice.png");
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
     app->blackTexIdx = LoadTexture2D(app, "color_black.png");
     app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
     app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
+    
+    app->diffuseWallTexIdx = LoadTexture2D(app, "diffuse_map.jpg");
+    app->normalMapTexIdx = LoadTexture2D(app, "normalbricks.jpg");
+    app->depthMapTexIdx = LoadTexture2D(app, "parallax_map.png");
 
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
@@ -290,10 +296,10 @@ void Init(App* app)
 
     app->sphereIdx = LoadModel(app, "sphere/sphere.fbx");
 
-    for (int i = -3; i <= 3; ++i)
+    for (int i = 0; i < 1; ++i)
     {
         Entity& entity = app->entities.emplace_back();
-        entity.modelIndex = LoadModel(app, "backpack/backpack.obj");
+        entity.modelIndex = LoadModel(app, "sphere/wall.obj");
         entity.localParamsOffset = (sizeof(glm::mat4) * 2) * app->entities.size();
         entity.localParamsSize = sizeof(glm::mat4) * 2;
 
@@ -617,10 +623,17 @@ void Render(App* app)
 
                         glUniform1i(app->programUniformTexture, 0);
                         glActiveTexture(GL_TEXTURE0);
-                        glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
+                        glBindTexture(GL_TEXTURE_2D, app->textures[app->diffuseWallTexIdx].handle);
+                        glUniform1i(app->normalsUniformTexture, 1);
+                        glActiveTexture(GL_TEXTURE1);
+                        glBindTexture(GL_TEXTURE_2D, app->textures[app->normalMapTexIdx].handle);
+                        glUniform1i(app->depthUniformTexture, 2);
+                        glActiveTexture(GL_TEXTURE2);
+                        glBindTexture(GL_TEXTURE_2D, app->textures[app->depthMapTexIdx].handle);
 
                         Submesh& submesh = mesh.submeshes[i];
                         glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+                        glActiveTexture(GL_TEXTURE0);
                     }
                     glBindVertexArray(0);
                 }

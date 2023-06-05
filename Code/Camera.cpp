@@ -40,8 +40,8 @@ void Camera::Update(Input input, f32 dt)
 	glm::vec2 delta = (mouse - mouseInitialPos) * 0.0001f;
 	mouseInitialPos = mouse;
 
-	delta.x = -delta.x;
-	delta.y = -delta.y;
+	delta.x = -delta.x * (dt * 1000.0f);
+	delta.y = -delta.y * (dt * 1000.0f);
 	if (input.mouseButtons[RIGHT] == BUTTON_PRESSED)
 	{
 		if (input.keys[K_W] == BUTTON_PRESSED)
@@ -69,23 +69,33 @@ void Camera::Update(Input input, f32 dt)
 			newPos -= up * 0.025f;
 		}
 
-		if (delta.y != 0)
+		if (input.keys[K_ENTER] == BUTTON_PRESSED)
 		{
-			const glm::quat& quaternion = glm::quat(delta.y * (dt * 1000.0f), glm::normalize(glm::cross(front, up)));
-			const glm::quat& conjQuat = glm::conjugate(quaternion);
-
-			newFront = glm::normalize(quaternion * newFront * conjQuat);
-			newUp = glm::normalize(quaternion * newUp * conjQuat);
-			newFront = glm::orthonormalize(newFront, newUp);
+			glm::quat orbit = glm::quat(glm::vec3(position.z >= 0.0f ? delta.y * 2.0f : -delta.y * 2.0f, delta.x * 2.0f, 0.0));
+			
+			newPos = glm::normalize(orbit) * newPos;
+			newFront = glm::normalize(vec3(0.0) - newPos);
 		}
-		if (delta.x != 0)
+		else
 		{
-			const glm::quat& quaternion = glm::quat(delta.x * (dt * 1000.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-			const glm::quat& conjQuat = glm::conjugate(quaternion);
+			if (delta.y != 0)
+			{
+				const glm::quat& quaternion = glm::quat(delta.y, glm::normalize(glm::cross(front, up)));
+				const glm::quat& conjQuat = glm::conjugate(quaternion);
 
-			newFront = glm::normalize(quaternion * newFront * conjQuat);
-			newUp = glm::normalize(quaternion * newUp * conjQuat);
-			glm::orthonormalize(newFront, newUp);
+				newFront = glm::normalize(quaternion * newFront * conjQuat);
+				newUp = glm::normalize(quaternion * newUp * conjQuat);
+				newFront = glm::orthonormalize(newFront, newUp);
+			}
+			if (delta.x != 0)
+			{
+				const glm::quat& quaternion = glm::quat(delta.x, glm::vec3(0.0f, 1.0f, 0.0f));
+				const glm::quat& conjQuat = glm::conjugate(quaternion);
+
+				newFront = glm::normalize(quaternion * newFront * conjQuat);
+				newUp = glm::normalize(quaternion * newUp * conjQuat);
+				glm::orthonormalize(newFront, newUp);
+			}
 		}
 
 		position = newPos;

@@ -6,15 +6,12 @@
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
 layout(location=0) in vec3 aPosition;
-layout(location=1) in vec3 aNormal;
+//layout(location=1) in vec3 aNormal;
 layout(location=2) in vec2 aTexCoord;
 //layout(location=3) in vec3 aTangent;
 //layout(location=4) in vec3 aBiTangent;
 
 out vec2 vTexCoord;
-out vec3 vPosition;
-out vec3 vNormal;
-out vec3 vViewDir;
 
 struct Light
 {
@@ -40,11 +37,7 @@ layout(binding = 1, std140) uniform LocalParams
 void main()
 {
     vTexCoord = aTexCoord;
-    vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
-    vNormal = mat3(transpose(inverse(uWorldMatrix))) * aNormal;
-    vViewDir = uCameraPosition - vPosition;
-
-    gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
+    gl_Position = vec4(aPosition, 1.0);
 }
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////
@@ -58,11 +51,13 @@ struct Light
 };
 
 in vec2 vTexCoord;
-in vec3 vPosition;
-in vec3 vNormal;
-in vec3 vViewDir;
 
-uniform sampler2D uTexture;
+layout(location = 0) uniform sampler2D positions;
+layout(location = 1) uniform sampler2D normals;
+layout(location = 2) uniform sampler2D colors;
+layout(location = 3) uniform sampler2D depth;
+
+uniform int renderMode;
 
 layout(binding = 0, std140) uniform GlobalParams
 {
@@ -71,15 +66,99 @@ layout(binding = 0, std140) uniform GlobalParams
     Light uLights[16];
 };
 
-layout(location = 0) out vec4 positions;
-layout(location = 1) out vec4 normals;
-layout(location = 2) out vec4 colors;
+layout(location = 0) out vec4 oColor;
+
+vec3 CalcDirectionalLight(vec3 direction, vec3 color, vec3 vPosition, vec3 vNormal)
+{
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * color;
+
+    vec3 norm = normalize(vNormal);
+    vec3 lightDir = normalize(-direction);
+
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * color;
+
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(uCameraPosition - vPosition);
+    vec3 reflectDir = reflect(-lightDir, norm);
+
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * color;  
+
+    return (ambient + diffuse + specular);
+}
+
+vec3 CalcPointLight(vec3 position, vec3 color, vec3 vPosition, vec3 vNormal)
+{
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * color;
+
+    vec3 norm = normalize(vNormal);
+    vec3 lightDir = normalize(position - vPosition);
+
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * color;
+
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(uCameraPosition - vPosition);
+    vec3 reflectDir = reflect(-lightDir, norm);
+
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * color;  
+
+    float distance = length(position - vPosition);
+    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
+
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+
+    return (ambient + diffuse + specular);
+}
 
 void main()
 {
-    positions = vec4(vPosition, 1.0);
-    normals = vec4(vNormal, 1.0);
-    colors = vec4(texture(uTexture, vTexCoord).rgb, 1.0);
+    if (renderMode == 0)
+    {
+        vec3 color = texture(colors, vTexCoord).rgb;
+        vec3 positionFrag = texture(positions, vTexCoord).rgb;
+        vec3 normalFrag = normalize(texture(normals, vTexCoord).rgb);
+
+        for (int i = 0; i < uLightCount; ++i)
+        {
+            vec3 result;
+            if (uLights[i].type == 0)
+            {
+                result = CalcDirectionalLight(uLights[i].direction, uLights[i].color, positionFrag, normalFrag) * color;
+            }
+            else if (uLights[i].type == 1)
+            {
+                result = CalcPointLight(uLights[i].position, uLights[i].color, positionFrag, normalFrag) * color;
+            }
+
+            oColor += vec4(result, 1.0);
+        }
+    }
+    else if (renderMode == 1)
+    {
+        oColor = vec4(texture(positions, vTexCoord).rgb, 1.0);
+    }
+    else if (renderMode == 2)
+    {
+        oColor = vec4(texture(normals, vTexCoord).rgb, 1.0);
+    }
+    else if (renderMode == 3)
+    {
+        oColor = vec4(texture(colors, vTexCoord).rgb, 1.0);
+    }
+    else if (renderMode == 4)
+    {
+        oColor = vec4(vec3(texture(depth, vTexCoord).r), 1.0);
+    }
+
+    //oColor = vec4(result, 1.0);
+    //oColor = vec4(uLights[0].color, 1.0);
 }
 
 #endif
