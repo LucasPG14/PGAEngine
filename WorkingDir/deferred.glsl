@@ -56,6 +56,7 @@ layout(location = 0) uniform sampler2D positions;
 layout(location = 1) uniform sampler2D normals;
 layout(location = 2) uniform sampler2D colors;
 layout(location = 3) uniform sampler2D depth;
+layout(location = 4) uniform sampler2D bloom;
 
 uniform int renderMode;
 
@@ -139,6 +140,8 @@ void main()
 
             oColor += vec4(result, 1.0);
         }
+
+        oColor += vec4(texture(bloom, vTexCoord).rgb, 1.0);
     }
     else if (renderMode == 1)
     {

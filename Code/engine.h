@@ -41,6 +41,12 @@ enum Mode
 
 enum class RenderMode
 {
+    FORWARD = 0,
+    DEFERRED = 1
+};
+
+enum class TextureToRender
+{
     FINAL_RENDER = 0,
     POSITIONS = 1,
     NORMALS = 2,
@@ -138,6 +144,8 @@ struct App
     u32 deferredIdx;
     u32 finalQuadIdx;
     u32 lightsIdx;
+    u32 bloomIdx;
+    u32 quadForwardIdx;
     
     // texture indices
     u32 diceTexIdx;
@@ -181,8 +189,11 @@ struct App
     u32 globalParamsSize;
 
     Framebuffer* fbo1;
-    Framebuffer* fbo2;
+    
+    Framebuffer* fboBloom1;
+    Framebuffer* fboBloom2;
 
+    TextureToRender textureToRender;
     RenderMode renderMode;
 
     u32 sphereIdx;

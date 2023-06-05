@@ -110,6 +110,8 @@ void OnGlfwResizeFramebuffer(GLFWwindow* window, int width, int height)
     App* app = (App*)glfwGetWindowUserPointer(window);
     app->displaySize = vec2(width, height);
     app->fbo1->Resize(width, height);
+    app->fboBloom1->Resize(width, height);
+    app->fboBloom2->Resize(width, height);
     app->camera.Resize(width, height);
 }
 

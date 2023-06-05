@@ -273,6 +273,14 @@ void Init(App* app)
     Program& program4 = app->programs[app->lightsIdx];
     ChargeProgram(program4);
 
+    app->bloomIdx = LoadProgram(app, "bloom.glsl", "BLOOM");
+    Program& program5 = app->programs[app->bloomIdx];
+    ChargeProgram(program5);
+
+    app->quadForwardIdx = LoadProgram(app, "quadForward.glsl", "FORWARD");
+    Program& program6 = app->programs[app->quadForwardIdx];
+    ChargeProgram(program6);
+
     app->programUniformTexture = glGetUniformLocation(program2.handle, "uTexture");
     app->normalsUniformTexture = glGetUniformLocation(program2.handle, "normalTexture");
     app->depthUniformTexture = glGetUniformLocation(program2.handle, "depthTexture");
@@ -299,7 +307,7 @@ void Init(App* app)
     for (int i = 0; i < 1; ++i)
     {
         Entity& entity = app->entities.emplace_back();
-        entity.modelIndex = LoadModel(app, "sphere/wall.obj");
+        entity.modelIndex = LoadModel(app, "backpack/backpack.obj");
         entity.localParamsOffset = (sizeof(glm::mat4) * 2) * app->entities.size();
         entity.localParamsSize = sizeof(glm::mat4) * 2;
 
@@ -353,9 +361,14 @@ void Init(App* app)
 
     glEnable(GL_DEPTH_TEST);
 
-    app->fbo1 = new Framebuffer(3, app->displaySize.x, app->displaySize.y);
+    app->fbo1 = new Framebuffer(5, app->displaySize.x, app->displaySize.y);
+    
+    app->fboBloom1 = new Framebuffer(1, app->displaySize.x, app->displaySize.y);
+    app->fboBloom2 = new Framebuffer(1, app->displaySize.x, app->displaySize.y);
 
     app->mode = Mode_TexturedQuad;
+    app->renderMode = RenderMode::DEFERRED;
+    app->textureToRender = TextureToRender::FINAL_RENDER;
 
     app->camera.Init({0.0f, 0.0f, 5.0f}, 0.1f, 1000.0f, (float)app->displaySize.x / (float)app->displaySize.y);
 }
@@ -363,27 +376,39 @@ void Init(App* app)
 void Gui(App* app)
 {
     ImGui::BeginMainMenuBar();
+    if (ImGui::BeginMenu("Texture to Render"))
+    {
+        if (ImGui::MenuItem("FINAL RENDER", "", app->textureToRender == TextureToRender::FINAL_RENDER))
+        {
+            app->textureToRender = TextureToRender::FINAL_RENDER;
+        }
+        if (ImGui::MenuItem("POSITIONS", "", app->textureToRender == TextureToRender::POSITIONS))
+        {
+            app->textureToRender = TextureToRender::POSITIONS;
+        }
+        if (ImGui::MenuItem("NORMALS", "", app->textureToRender == TextureToRender::NORMALS))
+        {
+            app->textureToRender = TextureToRender::NORMALS;
+        }
+        if (ImGui::MenuItem("ALBEDO", "", app->textureToRender == TextureToRender::ALBEDO))
+        {
+            app->textureToRender = TextureToRender::ALBEDO;
+        }
+        if (ImGui::MenuItem("DEPTH", "", app->textureToRender == TextureToRender::DEPTH))
+        {
+            app->textureToRender = TextureToRender::DEPTH;
+        }
+        ImGui::EndMenu();
+    }
     if (ImGui::BeginMenu("Render Mode"))
     {
-        if (ImGui::MenuItem("FINAL RENDER", "", app->renderMode == RenderMode::FINAL_RENDER))
+        if (ImGui::MenuItem("DEFERRED", "", app->renderMode == RenderMode::DEFERRED))
         {
-            app->renderMode = RenderMode::FINAL_RENDER;
+            app->renderMode = RenderMode::DEFERRED;
         }
-        if (ImGui::MenuItem("POSITIONS", "", app->renderMode == RenderMode::POSITIONS))
+        if (ImGui::MenuItem("FORWARD", "", app->renderMode == RenderMode::FORWARD))
         {
-            app->renderMode = RenderMode::POSITIONS;
-        }
-        if (ImGui::MenuItem("NORMALS", "", app->renderMode == RenderMode::NORMALS))
-        {
-            app->renderMode = RenderMode::NORMALS;
-        }
-        if (ImGui::MenuItem("ALBEDO", "", app->renderMode == RenderMode::ALBEDO))
-        {
-            app->renderMode = RenderMode::ALBEDO;
-        }
-        if (ImGui::MenuItem("DEPTH", "", app->renderMode == RenderMode::DEPTH))
-        {
-            app->renderMode = RenderMode::DEPTH;
+            app->renderMode = RenderMode::FORWARD;
         }
         ImGui::EndMenu();
     }
@@ -602,6 +627,11 @@ void Render(App* app)
                 Program& program = app->programs[app->deferredIdx];
                 glUseProgram(program.handle);
 
+                GLuint location = glGetUniformLocation(program.handle, "renderMode");
+                glUniform1i(location, (GLint)app->renderMode);
+
+                glEnable(GL_DEPTH_TEST);
+
                 glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
                 
                 for (int i = 0; i < app->entities.size(); ++i)
@@ -623,13 +653,13 @@ void Render(App* app)
 
                         glUniform1i(app->programUniformTexture, 0);
                         glActiveTexture(GL_TEXTURE0);
-                        glBindTexture(GL_TEXTURE_2D, app->textures[app->diffuseWallTexIdx].handle);
-                        glUniform1i(app->normalsUniformTexture, 1);
-                        glActiveTexture(GL_TEXTURE1);
-                        glBindTexture(GL_TEXTURE_2D, app->textures[app->normalMapTexIdx].handle);
-                        glUniform1i(app->depthUniformTexture, 2);
-                        glActiveTexture(GL_TEXTURE2);
-                        glBindTexture(GL_TEXTURE_2D, app->textures[app->depthMapTexIdx].handle);
+                        glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
+                        //glUniform1i(app->normalsUniformTexture, 1);
+                        //glActiveTexture(GL_TEXTURE1);
+                        //glBindTexture(GL_TEXTURE_2D, app->textures[app->normalMapTexIdx].handle);
+                        //glUniform1i(app->depthUniformTexture, 2);
+                        //glActiveTexture(GL_TEXTURE2);
+                        //glBindTexture(GL_TEXTURE_2D, app->textures[app->depthMapTexIdx].handle);
 
                         Submesh& submesh = mesh.submeshes[i];
                         glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
@@ -638,44 +668,8 @@ void Render(App* app)
                     glBindVertexArray(0);
                 }
                 glUseProgram(0);
-                app->fbo1->Unbind();
 
-                glClearColor(0.0, 0.0, 0.0, 1.0);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-                
-                Program& programQuad = app->programs[app->finalQuadIdx];
-                glUseProgram(programQuad.handle);
-
-                glBindVertexArray(app->vao);
-                //glEnable(GL_BLEND);
-                //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-                glUniform1i(app->programUniformTexture, 0);
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, app->textures[app->diceTexIdx].handle);
-
-                app->fbo1->BindColorTextures();
-                app->fbo1->BindDepthTexture();
-                GLint location = glGetUniformLocation(programQuad.handle, "positions");
-                glUniform1i(location, 0);
-                location = glGetUniformLocation(programQuad.handle, "normals");
-                glUniform1i(location, 1);
-                location = glGetUniformLocation(programQuad.handle, "colors");
-                glUniform1i(location, 2);
-                location = glGetUniformLocation(programQuad.handle, "depth");
-                glUniform1i(location, 3);
-                location = glGetUniformLocation(programQuad.handle, "renderMode");
-                glUniform1i(location, (GLint)app->renderMode);
-                
-                glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
-                glBindVertexArray(0);
-                glUseProgram(0);
-
-                glBindFramebuffer(GL_READ_FRAMEBUFFER, app->fbo1->GetID());
-                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // write to default framebuffer
-                glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
-                
+                // Light Pass
                 Program& programLights = app->programs[app->lightsIdx];
                 glUseProgram(programLights.handle);
 
@@ -719,6 +713,103 @@ void Render(App* app)
                     }
                 }
                 glUseProgram(0);
+                app->fbo1->Unbind();
+
+                // Bloom Pass
+                bool horizontal = true, first_iteration = true;
+                int amount = 10;
+                Program& programBloom = app->programs[app->bloomIdx];
+                glUseProgram(programBloom.handle);
+                for (unsigned int i = 0; i < amount; i++)
+                {
+                    horizontal == true ? app->fboBloom1->Bind() : app->fboBloom2->Bind();
+
+                    glClearColor(0.0, 0.0, 0.0, 1.0);
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                    glDisable(GL_DEPTH_TEST);
+
+                    GLuint location = glGetUniformLocation(programBloom.handle, "horizontal");
+                    glUniform1i(location, horizontal);
+                    location = glGetUniformLocation(programBloom.handle, "image");
+                    glUniform1i(location, 0);
+
+                    glActiveTexture(GL_TEXTURE0);
+                    if (first_iteration)
+                    {
+                        u32 fbo = app->fbo1->GetColorAttachment(3);
+                        glBindTexture(GL_TEXTURE_2D, fbo);
+                    }
+                    else
+                    {
+                        if (horizontal)
+                        {
+                            app->fboBloom2->BindColorTextures();
+                        }
+                        else
+                        {
+                            app->fboBloom1->BindColorTextures();
+                        }
+                    }                
+                    
+                    glBindVertexArray(app->vao);
+                    glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
+                    glBindVertexArray(0);
+
+                    horizontal = !horizontal;
+                    if (first_iteration)
+                        first_iteration = false;
+                    
+                }
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                glUseProgram(0);
+
+                glClearColor(0.0, 0.0, 0.0, 1.0);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                
+                glEnable(GL_DEPTH_TEST);
+
+                Program programQuad;
+                if (app->renderMode == RenderMode::FORWARD)
+                {
+                    programQuad = app->programs[app->quadForwardIdx];
+                    glUseProgram(programQuad.handle);
+                }
+                else
+                {
+                    programQuad = app->programs[app->finalQuadIdx];
+                    glUseProgram(programQuad.handle);
+                }
+                glBindVertexArray(app->vao);
+
+                app->fbo1->BindColorTextures();
+                app->fbo1->BindDepthTexture();
+
+                glActiveTexture(GL_TEXTURE5);
+                glBindTexture(GL_TEXTURE_2D, app->fboBloom2->GetColorAttachment());
+
+                location = glGetUniformLocation(programQuad.handle, "positions");
+                glUniform1i(location, 0);
+                location = glGetUniformLocation(programQuad.handle, "normals");
+                glUniform1i(location, 1);
+                location = glGetUniformLocation(programQuad.handle, "colors");
+                glUniform1i(location, 2);
+                location = glGetUniformLocation(programQuad.handle, "forwardColor");
+                glUniform1i(location, 3);
+                location = glGetUniformLocation(programQuad.handle, "depth");
+                glUniform1i(location, 4);
+                location = glGetUniformLocation(programQuad.handle, "bloom");
+                glUniform1i(location, 5);
+                location = glGetUniformLocation(programQuad.handle, "renderMode");
+                glUniform1i(location, (GLint)app->textureToRender);
+
+                glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(u16), GL_UNSIGNED_SHORT, 0);
+                glBindVertexArray(0);
+                glUseProgram(0);
+
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, app->fbo1->GetID());
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // write to default framebuffer
+                glBlitFramebuffer(0, 0, app->displaySize.x, app->displaySize.y, 0, 0, app->displaySize.x, app->displaySize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
             }
             break;
 

@@ -80,6 +80,8 @@ layout(location = 0) uniform sampler2D uTexture;
 layout(location = 1) uniform sampler2D normalTexture;
 layout(location = 2) uniform sampler2D depthTexture;
 
+uniform int renderMode;
+
 layout(binding = 0, std140) uniform GlobalParams
 {
     vec3 uCameraPosition;
@@ -90,6 +92,8 @@ layout(binding = 0, std140) uniform GlobalParams
 layout(location = 0) out vec4 positions;
 layout(location = 1) out vec4 normals;
 layout(location = 2) out vec4 colors;
+layout(location = 3) out vec4 brightColor;
+layout(location = 4) out vec4 forwardColor;
 
 vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 {
@@ -128,20 +132,86 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
     return finalTexCoords;
 }
 
-void main()
+vec3 CalcDirectionalLight(vec3 direction, vec3 color, vec3 vPosition, vec3 vNormal)
 {
-    vec3 viewDir = normalize(vTangentViewPos - vTangentFragPos);
-    vec2 texCoords = ParallaxMapping(vTexCoord,  viewDir);
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * color;
 
-    if(texCoords.x > 1.0 || texCoords.y > 1.0 || texCoords.x < 0.0 || texCoords.y < 0.0)
-        discard;
-    
+    vec3 norm = normalize(vNormal);
+    vec3 lightDir = normalize(-direction);
+
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * color;
+
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(uCameraPosition - vPosition);
+    vec3 reflectDir = reflect(-lightDir, norm);
+
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * color;  
+
+    return (ambient + diffuse + specular);
+}
+
+vec3 CalcPointLight(vec3 position, vec3 color, vec3 vPosition, vec3 vNormal)
+{
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * color;
+
+    vec3 norm = normalize(vNormal);
+    vec3 lightDir = normalize(position - vPosition);
+
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * color;
+
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(uCameraPosition - vPosition);
+    vec3 reflectDir = reflect(-lightDir, norm);
+
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * color;  
+
+    float distance = length(position - vPosition);
+    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
+
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+
+    return (ambient + diffuse + specular);
+}
+
+void main()
+{ 
     positions = vec4(vPosition, 1.0);
-    vec3 normal = texture(normalTexture, texCoords).rgb;
-    normal = normalize(normal * 2.0 - 1.0);
+    vec3 normal = normalize(vNormal * 2.0 - 1.0);
     normals = vec4(normal, 1.0);
 
-    colors = vec4(texture(uTexture, texCoords).rgb, 1.0);
+    colors = vec4(texture(uTexture, vTexCoord).rgb, 1.0);
+    
+    float brightness = dot(colors.rgb, vec3(0.2126, 0.7152, 0.0722));
+    if(brightness > 0.0)
+        brightColor = vec4(colors.rgb, 1.0);
+    else
+        brightColor = vec4(0.0, 0.0, 0.0, 1.0);
+
+    if (renderMode == 0)
+    {
+        vec3 result;
+        for (int i = 0; i < uLightCount; ++i)
+        {
+            if (uLights[i].type == 0)
+            {
+                result += CalcDirectionalLight(uLights[i].direction, uLights[i].color, vPosition, normal) * colors.rgb;
+            }
+            else if (uLights[i].type == 1)
+            {
+                result += CalcPointLight(uLights[i].position, uLights[i].color, vPosition, normal) * colors.rgb;
+            }
+
+            forwardColor += vec4(result, 1.0);
+        }
+    }
 }
 
 #endif
