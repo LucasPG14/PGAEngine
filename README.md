@@ -14,9 +14,17 @@ And this one is an image of the scene with forward rendering.
 
 ## Relief Mapping
 
+This engine implements the relief mapping. This technique consists in giving the illusion that an object has a lot of relief. (NOT WORKING AS EXPECTED)
+
+Here you can see an image of the scene without relief mapping
+![](Pictures/withoutrelief.png)
+
+And this one is an image of the scene with relief mapping
+![](Pictures/relief.png)
+
 ## Bloom
 
-This engine implements the bloom technique. This technique makes the texture output look a little bit blurry, making the illusion that there's too much light.
+This engine also implements the bloom technique. This technique makes the texture output look a little bit blurry, making the illusion that there's too much light.
 
 Here you can see an image with bloom.
 
