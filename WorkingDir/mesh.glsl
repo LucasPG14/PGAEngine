@@ -172,8 +172,8 @@ void main()
                 result += CalcPointLight(uLights[i].position, uLights[i].color, vPosition, normal) * colors.rgb;
             }
 
-            forwardColor += vec4(result, 1.0);
         }
+        forwardColor = vec4(result, 1.0);
     }
 }
 

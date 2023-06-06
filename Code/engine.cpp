@@ -325,7 +325,7 @@ void Init(App* app)
     }
 
     Entity& entity = app->entities.emplace_back();
-    entity.modelIndex = LoadModel(app, "sphere/sphere.fbx");
+    entity.modelIndex = LoadModel(app, "sphere/plane.fbx");
     entity.localParamsOffset = (sizeof(glm::mat4) * 2) * app->entities.size();
     entity.localParamsSize = sizeof(glm::mat4) * 2;
     entity.relief = true;
@@ -689,20 +689,24 @@ void Render(App* app)
                         u32 submeshMaterialIdx = model.materialIdx[i];
                         Material& submeshMaterial = app->materials[submeshMaterialIdx];
 
-                        glUniform1i(app->programUniformTexture, 0);
+                        location = glGetUniformLocation(program.handle, "uTexture");
+                        glUniform1i(location, 0);
                         glActiveTexture(GL_TEXTURE0);
                         glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
                         if (entity.relief)
                         {
                             glActiveTexture(GL_TEXTURE0);
                             glBindTexture(GL_TEXTURE_2D, app->textures[app->diffuseWallTexIdx].handle);
-                            glUniform1i(app->normalsUniformTexture, 1);
+                            glUniform1i(location, 0);
                             glActiveTexture(GL_TEXTURE1);
                             glBindTexture(GL_TEXTURE_2D, app->textures[app->normalMapTexIdx].handle);
-                            glUniform1i(app->depthUniformTexture, 2);
+                            location = glGetUniformLocation(program.handle, "normalTexture");
+                            glUniform1i(location, 1);
                             glActiveTexture(GL_TEXTURE2);
                             glBindTexture(GL_TEXTURE_2D, app->textures[app->depthMapTexIdx].handle);
-
+                            location = glGetUniformLocation(program.handle, "depthTexture");
+                            glUniform1i(location, 2);
+                            
                             location = glGetUniformLocation(program.handle, "minLayers");
                             glUniform1f(location, app->minLayers);
                             location = glGetUniformLocation(program.handle, "maxLayers");
@@ -710,6 +714,9 @@ void Render(App* app)
                             location = glGetUniformLocation(program.handle, "heightScale");
                             glUniform1f(location, app->heightScale);
                         }
+
+                        location = glGetUniformLocation(program.handle, "viewPos");
+                        glUniform3fv(location, 1, glm::value_ptr(app->camera.GetPosition()));
 
                         Submesh& submesh = mesh.submeshes[i];
                         glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);

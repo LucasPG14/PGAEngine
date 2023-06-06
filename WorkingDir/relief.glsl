@@ -5,20 +5,6 @@
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
-layout(location=0) in vec3 aPosition;
-layout(location=1) in vec3 aNormal;
-layout(location=2) in vec2 aTexCoord;
-layout(location=3) in vec3 aTangent;
-layout(location=4) in vec3 aBiTangent;
-
-out vec2 vTexCoord;
-out vec3 vPosition;
-out vec3 vTangentFragPos;
-out vec3 vTangentViewPos;
-out vec3 vNormal;
-out vec3 vViewDir;
-out mat3 tbn;
-
 struct Light
 {
     int type;
@@ -40,41 +26,57 @@ layout(binding = 1, std140) uniform LocalParams
     mat4 uWorldViewProjectionMatrix;
 };
 
+layout(location=0) in vec3 aPosition;
+layout(location=1) in vec3 aNormal;
+layout(location=2) in vec2 aTexCoord;
+layout(location=3) in vec3 aTangent;
+layout(location=4) in vec3 aBiTangent;
+
+out vec3 fragPos;
+out vec2 texCoords;
+out vec3 tangentViewPos;
+out vec3 tangentFragPos;
+out mat3 tbn;
+
+out vec3 t;
+out vec3 b;
+out vec3 n;
+
+uniform vec3 viewPos;
+
 void main()
 {
-    vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
-    vTexCoord = aTexCoord;
-    vNormal = mat3(transpose(inverse(uWorldMatrix))) * aNormal;
-    vViewDir = uCameraPosition - vPosition;
+    fragPos = vec3(uWorldMatrix * vec4(aPosition, 1.0));
+	texCoords = aTexCoord;
 
-    vec3 t = normalize(mat3(uWorldMatrix) * aTangent);
-    vec3 b = normalize(mat3(uWorldMatrix) * aBiTangent);
-    vec3 n = normalize(mat3(uWorldMatrix) * aNormal);
-    tbn = transpose(mat3(t, b, n));
+	vec3 T = normalize(mat3(uWorldMatrix) * aTangent);
+	vec3 B = normalize(mat3(uWorldMatrix) * aBiTangent);
+	vec3 N = normalize(mat3(uWorldMatrix) * aNormal);
+	tbn = mat3(T, B, N);
 
-    vTangentViewPos = tbn * uCameraPosition;
-    vTangentFragPos = tbn * vPosition;
-
-    gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
+    t = T;
+    b = B;
+    n = N;
+	
+    tangentViewPos = tbn * viewPos;
+	tangentFragPos = tbn * fragPos;
+	
+	//vNormal = vec3(uWorldMatrix * vec4(aNormal, 0.0));
+	
+	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////
 
-struct Light
-{
-    int type;
-    vec3 color;
-    vec3 direction;
-    vec3 position;
-};
-
-in vec2 vTexCoord;
-in vec3 vPosition;
-in vec3 vNormal;
-in vec3 vViewDir;
-in vec3 vTangentFragPos;
-in vec3 vTangentViewPos;
+in vec3 fragPos;
+in vec2 texCoords;
+in vec3 tangentViewPos;
+in vec3 tangentFragPos;
 in mat3 tbn;
+
+in vec3 t;
+in vec3 b;
+in vec3 n;
 
 layout(location = 0) uniform sampler2D uTexture;
 layout(location = 1) uniform sampler2D normalTexture;
@@ -84,6 +86,14 @@ uniform int renderMode;
 uniform float minLayers;
 uniform float maxLayers;
 uniform float heightScale;
+
+struct Light
+{
+    int type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
 
 layout(binding = 0, std140) uniform GlobalParams
 {
@@ -101,102 +111,94 @@ layout(location = 4) out vec4 forwardColor;
 vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 {
     const float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDir)));
-    float layerDepth = 1.0 / numLayers;
+	float layerDepth = 1.0 / numLayers;
 
-    float currentLayerDepth = 0.0;
+	float currentLayerDepth = 0.0;
 
-    vec2 P = viewDir.xy / viewDir.z * heightScale;
-    vec2 deltaTexCoords = P / numLayers;
+	vec2 P = viewDir.xy / viewDir.z * heightScale;
+	vec2 deltaTexCoords = P / numLayers;
 
-    vec2 currentTexCoords = texCoords;
-    float currentDepthMapValue = texture(depthTexture, currentTexCoords).r;
+	vec2 currentTexCoords = texCoords;
+	float currentDepthMapValue = texture(depthTexture, currentTexCoords).r;
 
-    while(currentLayerDepth < currentDepthMapValue)
-    {
-        currentTexCoords -= deltaTexCoords;
-        
-        currentDepthMapValue = texture(depthTexture, currentTexCoords).r;  
+	while(currentLayerDepth < currentDepthMapValue)
+	{
+		currentTexCoords -= deltaTexCoords;
+		
+		currentDepthMapValue = texture(depthTexture, currentTexCoords).r;  
    
-        currentLayerDepth += layerDepth;  
+		currentLayerDepth += layerDepth;  
     }
 
-    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+	vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
 
-    float afterDepth = currentDepthMapValue - currentLayerDepth;
-    float beforeDepth = texture(depthTexture, prevTexCoords).r - currentLayerDepth + layerDepth;
+	float afterDepth = currentDepthMapValue - currentLayerDepth;
+	float beforeDepth = texture(depthTexture, prevTexCoords).r - currentLayerDepth + layerDepth;
 
     float weight = afterDepth / (afterDepth - beforeDepth);
-    vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+	vec2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
     
-    return finalTexCoords;
+	return finalTexCoords;
 }
 
-vec3 CalcDirectionalLight(vec3 direction, vec3 color, vec3 vPosition, vec3 vNormal)
+vec3 CalcDirectionalLight(Light dirLight, vec3 normal, vec3 viewDirection)
 {
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * color;
+	vec3 lightDir = normalize(dirLight.direction);
+	
+	float diff = max(dot(normal, lightDir), 0.0);
+	vec3 diffuse = diff * dirLight.color;
+	
+	float ambientStrength = 0.1;
+	vec3 ambientLight = ambientStrength * dirLight.color;
+	
+	float specularStrength = 0.5;
+	vec3 reflectDir = reflect(lightDir, normal);
+	float spec = pow(max(dot(viewDirection, reflectDir), 0.0), 128.0);
+	vec3 specularLight = specularStrength * spec * dirLight.color;
 
-    vec3 norm = normalize(vNormal);
-    vec3 lightDir = normalize(-direction);
-
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * color;
-
-    float specularStrength = 0.5;
-    vec3 viewDir = normalize(uCameraPosition - vPosition);
-    vec3 reflectDir = reflect(-lightDir, norm);
-
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = specularStrength * spec * color;  
-
-    return (ambient + diffuse + specular);
+	return diffuse + ambientLight + specularLight;
 }
 
-vec3 CalcPointLight(vec3 position, vec3 color, vec3 fragPosition, vec3 normal)
+vec3 CalcPointLight(Light pointLight, vec3 normal, vec3 viewDirection)
 {
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * color;
+	vec3 lightDir = normalize((pointLight.position * tbn) - tangentFragPos);
+	vec3 halfwayDir = normalize(lightDir + viewDirection);
 
-    vec3 norm = normalize(normal);
-    vec3 lightDir = normalize(position - fragPosition);
+	float diff = max(dot(normal, lightDir), 0.0);
+	vec3 diffuse = diff * pointLight.color;
+	
+	float ambientStrength = 0.1;
+	vec3 ambientLight = ambientStrength * pointLight.color;
+	
+	float specularStrength = 0.5;
+	vec3 reflectDir = reflect(-lightDir, normal);
+	float spec = pow(max(dot(normal, halfwayDir), 0.0), 128.0);
+	vec3 specularLight = specularStrength * spec * pointLight.color;
 
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * color;
+	float distance = length(pointLight.position - fragPos);
+	float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
 
-    float specularStrength = 0.5;
-    vec3 viewDir = normalize(uCameraPosition - fragPosition);
-    vec3 reflectDir = reflect(-lightDir, norm);
+	ambientLight *= attenuation; 
+	diffuse *= attenuation;
+	specularLight *= attenuation;   
 
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = specularStrength * spec * color;  
-
-    float distance = length(position - fragPosition);
-    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
-
-    ambient *= attenuation;
-    diffuse *= attenuation;
-    specular *= attenuation;
-
-    return (ambient + diffuse + specular);
+	return diffuse + ambientLight + specularLight;
 }
 
 void main()
 { 
-    positions = vec4(vPosition, 1.0);
-
-    vec3 viewDir = normalize(vTangentViewPos - vTangentFragPos);
-    vec2 texCoords = ParallaxMapping(vTexCoord, viewDir);
-    vec3 normal = texture(normalTexture, texCoords).rgb;
-    normal = normalize(normal * 2.0 - 1.0);
-    normals = vec4(normal, 1.0);
-
-    colors = vec4(texture(uTexture, texCoords).rgb, 1.0);
+    vec3 viewDir = normalize(tangentViewPos - tangentFragPos);
+    vec2 newTexCoords = ParallaxMapping(texCoords, viewDir);
     
-    float brightness = dot(colors.rgb, vec3(0.2126, 0.7152, 0.0722));
-    if(brightness > 0.0)
-        brightColor = vec4(colors.rgb, 1.0);
-    else
-        brightColor = vec4(0.0, 0.0, 0.0, 1.0);
+    if(newTexCoords.x > 1.0 || newTexCoords.y > 1.0 || newTexCoords.x < 0.0 || newTexCoords.y < 0.0)
+	{
+		discard;
+	}
+
+    vec3 normal = texture(normalTexture, newTexCoords).rgb;
+    normal = normalize(normal * 2.0 - 1.0);
+
+    vec3 color = texture(uTexture, newTexCoords).rgb;
 
     if (renderMode == 0)
     {
@@ -205,16 +207,28 @@ void main()
         {
             if (uLights[i].type == 0)
             {
-                result += CalcDirectionalLight(uLights[i].direction, uLights[i].color, vPosition, normal) * colors.rgb;
+                result += CalcDirectionalLight(uLights[i], normal, viewDir) * color;
             }
             else if (uLights[i].type == 1)
             {
-                result += CalcPointLight(uLights[i].position, uLights[i].color, vPosition, normal) * colors.rgb;
+                result += CalcPointLight(uLights[i], normal, viewDir) * color;
             }
-
-            forwardColor += vec4(result, 1.0);
         }
+        forwardColor = vec4(result, 1.0);
     }
+
+    colors = vec4(color.rgb, 1.0);
+    
+    float brightness = dot(colors.rgb, vec3(0.2126, 0.7152, 0.0722));
+    if(brightness > 0.0)
+        brightColor = vec4(colors.rgb, 1.0);
+    else
+        brightColor = vec4(0.0, 0.0, 0.0, 1.0);
+
+    positions = vec4(fragPos, 1.0);
+    normals = vec4(b, 1.0);
+
+    //specularColor.rgb = texture(uTexture, newTexCoords).rgb;
 }
 
 #endif

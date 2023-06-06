@@ -71,55 +71,49 @@ layout(binding = 0, std140) uniform GlobalParams
 
 layout(location = 0) out vec4 oColor;
 
-vec3 CalcDirectionalLight(vec3 direction, vec3 color, vec3 vPosition, vec3 vNormal)
+vec3 CalcDirectionalLight(Light dirLight, vec3 normal, vec3 viewDirection)
 {
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * color;
+	vec3 lightDir = normalize(dirLight.direction);
+			
+	// Diffuse light
+	float diff = max(dot(normal, lightDir), 0.0);
+	vec3 diffuse = diff * dirLight.color;
+			
+	float ambientStrength = 0.1;
+	vec3 ambient = ambientStrength * dirLight.color;
 
-    vec3 norm = normalize(vNormal);
-    vec3 lightDir = normalize(-direction);
+	// Specular light
+    vec3 specularStrength = vec3(0.5);
+	vec3 reflectDir = reflect(lightDir, normal);
+	float spec = pow(max(dot(viewDirection, reflectDir), 0.0), 128.0);
+	vec3 specular = spec * dirLight.color * specularStrength;
 
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * color;
-
-    float specularStrength = 0.5;
-    vec3 viewDir = normalize(uCameraPosition - vPosition);
-    vec3 reflectDir = reflect(-lightDir, norm);
-
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = specularStrength * spec * color;  
-
-    return (ambient + diffuse + specular);
+	return diffuse + ambient + specular;
 }
 
-vec3 CalcPointLight(vec3 position, vec3 color, vec3 vPosition, vec3 vNormal)
+vec3 CalcPointLight(Light pointLight, vec3 normal, vec3 viewDirection, vec3 fragPos)
 {
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * color;
+	vec3 ambient = vec3(0.1);
 
-    vec3 norm = normalize(vNormal);
-    vec3 lightDir = normalize(position - vPosition);
+	vec3 lightDir = normalize(pointLight.position - fragPos);
+	vec3 halfwayDir = normalize(lightDir + viewDirection);
+	vec3 diffuse = max(dot(normal, lightDir), 0.0) * pointLight.color;
 
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * color;
+	// Specular light
+    vec3 specularStrength = vec3(0.5);
+	vec3 reflectDir = reflect(-lightDir, normal);
+	float spec = pow(max(dot(normal, halfwayDir), 0.0), 128.0);
+	vec3 specular = spec * pointLight.color * specularStrength;
+	
+	float distance = length(pointLight.position - fragPos);
+	float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
 
-    float specularStrength = 0.5;
-    vec3 viewDir = normalize(uCameraPosition - vPosition);
-    vec3 reflectDir = reflect(-lightDir, norm);
+	ambient  *= attenuation; 
+	diffuse  *= attenuation;
+	specular *= attenuation;     
 
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = specularStrength * spec * color;  
-
-    float distance = length(position - vPosition);
-    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
-
-    ambient *= attenuation;
-    diffuse *= attenuation;
-    specular *= attenuation;
-
-    return (ambient + diffuse + specular);
+	return diffuse + ambient + specular;
 }
-
 void main()
 {
     if (renderMode == 0)
@@ -128,16 +122,18 @@ void main()
         vec3 positionFrag = texture(positions, vTexCoord).rgb;
         vec3 normalFrag = normalize(texture(normals, vTexCoord).rgb);
 
+        vec3 viewDir = normalize(uCameraPosition - positionFrag);
+
         vec3 result;
         for (int i = 0; i < uLightCount; ++i)
         {
             if (uLights[i].type == 0)
             {
-                result += CalcDirectionalLight(uLights[i].direction, uLights[i].color, positionFrag, normalFrag) * color;
+                result += CalcDirectionalLight(uLights[i], normalFrag, viewDir) * color;
             }
             else if (uLights[i].type == 1)
             {
-                result += CalcPointLight(uLights[i].position, uLights[i].color, positionFrag, normalFrag) * color;
+                result += CalcPointLight(uLights[i], normalFrag, viewDir, positionFrag) * color;
             }
         }
 
