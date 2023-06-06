@@ -6,6 +6,12 @@ This is a rendering engine made for the subject PGA of the CITM(UPC). This engin
 
 Implements the deferred and forward rendering techniques. You can also visualize the different textures of the G-buffer.
 
+This is an image of the scene with deferred rendering.
+![](Pictures/deferred.png)
+
+And this one is an image of the scene with forward rendering.
+![](Pictures/forward.png)
+
 ## Relief Mapping
 
 ## Bloom
